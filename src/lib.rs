@@ -120,11 +120,8 @@ impl<'a> ProbeServicesClient<'a> {
             conf,
             tests,
         };
-        self.client
-            .post(self.config.base_url.clone())
-            .json(&req)
-            .send()
-            .await
+        let u = self.config.base_url.join("/api/v1/check-in").unwrap();
+        self.client.post(u).json(&req).send().await
     }
 }
 
@@ -179,12 +176,15 @@ mod tests {
             software_name: "ooniprobe-rs".to_string(),
             software_version: "3.0.0".to_string(),
         };
-        let config = ProbeServicesConfig::default();
+        let config = ProbeServicesConfig {
+            base_url: "https://backend-fsn.ooni.org".parse().unwrap(),
+        };
         let client = ProbeServicesClient::new(&probe_meta, &config);
         let conf = HashMap::new();
         let tests = HashMap::new();
         let resp = client.check_in(conf, tests).await.unwrap();
         print!("{:?}", resp);
+        print!("{:?}", resp.bytes().await.unwrap());
         //assert!(result.is_ok());
     }
 
