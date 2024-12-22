@@ -13,3 +13,15 @@ serde_derive = "1.0"
 
 tokio = { version = "1.42.0", features = ["macros"] }
 url = "2.5.4"
+bytes = "1.9.0"
+http-body-util = "0.1.2"
+http = "1.2.0"
+hyper-util = { version = "0.1.10", features = ["http1", "http2"] }
+hyper = "1.5.2"
+boring = { git = "https://github.com/hellais/boring", branch = "parrot", features = [
+    "pq-experimental",
+] }
+tokio-boring = { git = "https://github.com/hellais/boring", branch = "parrot", features = [
+    "pq-experimental",
+] }
+brotli = "7.0.0"

@@ -1,0 +1,5 @@
+https://github.com/seanmonstar/reqwest
+https://github.com/hyperium/hyper
+https://github.com/algesten/ureq
+
+https://github.com/cloudflare/boringtun/blob/master/boringtun/src/jni.rs
