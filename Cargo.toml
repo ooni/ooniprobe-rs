@@ -23,5 +23,5 @@ boring = { git = "https://github.com/hellais/boring", branch = "parrot", feature
 tokio-boring = { git = "https://github.com/hellais/boring", branch = "parrot", features = [
     "pq-experimental",
 ] }
-brotli = "7.0.0"
+brotli = { version = "6.0.0", features = ["std"] }
 quanta = "0.12.4"

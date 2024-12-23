@@ -5,11 +5,10 @@ use http_body_util::{BodyExt, Full};
 use hyper::client::conn::http2;
 use hyper_util::rt::TokioIo;
 
-use boring::ssl::{
-    SslConnector, SslCurve, SslMethod, SslOptions, SslSignatureAlgorithm, SslVersion,
-};
 use std::net::ToSocketAddrs;
 use tokio::net::TcpStream;
+
+use crate::parrot;
 
 #[derive(Debug, Clone)]
 pub enum Http2Error {
@@ -34,67 +33,7 @@ impl Http2Client {
             .unwrap();
         let stream = TcpStream::connect(&addr).await.unwrap();
 
-        // Setup TLS stack to parrot latest chrome.
-        // ja4 hash matches chrome 131.0.6778.70.
-        // TODO:
-        // * re-enable compression
-        // * probably expose this particular configuration inside of
-        //   SslConnector::builder() or ConnectConfiguration
-        let mut connector = SslConnector::builder(SslMethod::tls()).unwrap();
-        connector.clear_options(
-            SslOptions::NO_SSLV2
-                | SslOptions::NO_SSLV3
-                | SslOptions::NO_TLSV1
-                | SslOptions::NO_TLSV1_1,
-        );
-        connector
-            .set_cipher_list("ALL:!aPSK:!ECDSA+SHA1:!3DES")
-            .expect("failure to set_cipher_list");
-        connector.set_grease_enabled(true);
-        connector
-            .set_min_proto_version(Some(SslVersion::TLS1_2))
-            .expect("failure to set min proto version");
-        connector
-            .set_max_proto_version(Some(SslVersion::TLS1_3))
-            .expect("failure to set max proto version");
-        connector.enable_signed_cert_timestamps();
-        connector
-            .set_alpn_protos(b"\x02h2\x08http/1.1")
-            .expect("failure to set_alpn_protos");
-        connector.enable_ocsp_stapling();
-
-        // TODO: temporarily disable while I figure out how to integrate brotli into upstream
-        //connector.add_certificate_compression_algorithm(BrotliCompressor::default());
-
-        connector
-            .set_verify_algorithm_prefs(&[
-                SslSignatureAlgorithm::ECDSA_SECP256R1_SHA256,
-                SslSignatureAlgorithm::RSA_PSS_RSAE_SHA256,
-                SslSignatureAlgorithm::RSA_PKCS1_SHA256,
-                SslSignatureAlgorithm::ECDSA_SECP384R1_SHA384,
-                SslSignatureAlgorithm::RSA_PSS_RSAE_SHA384,
-                SslSignatureAlgorithm::RSA_PKCS1_SHA384,
-                SslSignatureAlgorithm::RSA_PSS_RSAE_SHA512,
-                SslSignatureAlgorithm::RSA_PKCS1_SHA512,
-            ])
-            .expect("failure to set verify algorithms");
-
-        connector
-            .set_curves(&[
-                SslCurve::X25519_MLKEM768,
-                SslCurve::X25519,
-                SslCurve::SECP256R1,
-                SslCurve::SECP384R1,
-            ])
-            .expect("failure to set curves");
-
-        let mut config = connector.build().configure().unwrap();
-        config
-            .add_application_settings(b"h2", b"")
-            .expect("failure to add_application_settings");
-        config
-            .enable_ech_grease()
-            .expect("failure to enable ech_grease");
+        let config = parrot::make_chrome_config();
 
         let stream = tokio_boring::connect(config, host.as_ref(), stream)
             .await
