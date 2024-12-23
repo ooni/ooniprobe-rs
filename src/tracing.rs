@@ -10,14 +10,14 @@ pub enum TracingError {
 
 #[derive(Clone, Serialize)]
 pub struct NetworkEvent {
-    address: Option<String>,
-    failure: Option<String>,
-    num_bytes: Option<u32>,
-    operation: Option<String>,
-    proto: Option<String>,
-    transaction_id: u32,
-    t0: Option<f64>,
-    t: Option<f64>,
+    pub address: Option<String>,
+    pub failure: Option<String>,
+    pub num_bytes: Option<u32>,
+    pub operation: Option<String>,
+    pub proto: Option<String>,
+    pub transaction_id: u32,
+    pub t0: Option<f64>,
+    pub t: Option<f64>,
 
     #[serde(skip_serializing)]
     measurement_start_time: quanta::Instant,
