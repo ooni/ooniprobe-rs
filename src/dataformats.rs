@@ -2,6 +2,10 @@ use boring::{base64, derive};
 
 use crate::tracing::NetworkEvent;
 
+pub trait FromNetworkEvent {
+    fn add_network_event(&mut self, network_event: &NetworkEvent);
+}
+
 #[derive(Default, Debug)]
 pub struct DnsQuery {
     pub answers: Vec<DnsAnswer>,
@@ -121,7 +125,6 @@ pub struct TlsHandshake {
     pub failure: String,
     pub t0: f64,
     pub t: f64,
-    pub tags: Vec<String>,
     pub transaction_id: u32,
 
     pub no_tls_verify: bool,
@@ -132,6 +135,8 @@ pub struct TlsHandshake {
     pub server_name: String,
     pub tls_version: String,
     pub cipher_suite: String,
+
+    pub tags: Vec<String>,
 }
 
 impl TlsHandshake {
@@ -159,8 +164,10 @@ impl TlsHandshake {
             .map_or(String::new(), |name| name.to_string());
         self.tls_version = ssl.version_str().to_string();
     }
+}
 
-    pub fn add_network_event(&mut self, network_event: &NetworkEvent) {
+impl FromNetworkEvent for TlsHandshake {
+    fn add_network_event(&mut self, network_event: &NetworkEvent) {
         self.t0 = network_event.t0.unwrap();
         self.t = network_event.t.unwrap();
         self.network = network_event.proto.clone().unwrap();
