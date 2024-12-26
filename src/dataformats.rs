@@ -1,6 +1,6 @@
 use boring::{base64, derive};
 
-use crate::tracing::NetworkEvent;
+use crate::tracing::network_event::NetworkEvent;
 
 pub trait FromNetworkEvent {
     fn add_network_event(&mut self, network_event: &NetworkEvent);

@@ -15,6 +15,8 @@ url = "2.5.4"
 bytes = "1.9.0"
 http-body-util = "0.1.2"
 http = "1.2.0"
+pin-project = "1"
+#mio = { version = "1.42.0" }
 hyper-util = { version = "0.1.10", features = ["http1", "http2", "tokio"] }
 hyper = { version = "1.5.2", features = ["client"] }
 boring = { git = "https://github.com/hellais/boring", branch = "parrot", features = [

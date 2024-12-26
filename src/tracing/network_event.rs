@@ -8,7 +8,7 @@ pub enum TracingError {
     SpanAlreadyExited,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Debug)]
 pub struct NetworkEvent {
     pub address: Option<String>,
     pub failure: Option<String>,
@@ -110,7 +110,7 @@ impl<'a> NetworkEventCollector {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct NetworkEventTransaction {
     measurement_start_time: Instant,
     transaction_id: u32,

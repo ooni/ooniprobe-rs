@@ -1,18 +1,15 @@
-use std::pin::Pin;
-use std::task::{Context, Poll};
-
-use boring::derive;
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
 use hyper_util::rt::TokioIo;
-use std::io;
-use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+
 use tokio::net::TcpStream;
 
 use hyper::client::conn::http2;
 
 use crate::dataformats::FromNetworkEvent;
-use crate::{dataformats, parrot, tracing};
+use crate::tracing::network_event::NetworkEventCollector;
+use crate::tracing::stream::TracingTcpStream;
+use crate::{dataformats, parrot};
 use tokio::net::lookup_host;
 use url::Url;
 
@@ -39,65 +36,6 @@ pub trait Experiment {
     async fn run(target: Target, config: Config) -> TestKeys;
 }
 
-#[derive(Debug)]
-pub struct TcpStreamWrapper {
-    inner: TcpStream,
-}
-
-impl TcpStreamWrapper {
-    pub fn from_stream(inner: TcpStream) -> Self {
-        Self { inner }
-    }
-}
-
-impl AsyncWrite for TcpStreamWrapper {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
-        let inner = Pin::new(&mut self.get_mut().inner);
-        // TODO: record that we wrote bytes into the transport to the network events list
-        println!("writing");
-        inner.poll_write(cx, buf)
-    }
-
-    fn poll_write_vectored(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        bufs: &[io::IoSlice<'_>],
-    ) -> Poll<io::Result<usize>> {
-        let inner = Pin::new(&mut self.get_mut().inner);
-        inner.poll_write_vectored(cx, bufs)
-    }
-
-    fn is_write_vectored(&self) -> bool {
-        self.inner.is_write_vectored()
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        let inner = Pin::new(&mut self.get_mut().inner);
-        inner.poll_flush(cx)
-    }
-
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        let inner = Pin::new(&mut self.get_mut().inner);
-        inner.poll_shutdown(cx)
-    }
-}
-
-impl AsyncRead for TcpStreamWrapper {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
-        let inner = Pin::new(&mut self.get_mut().inner);
-        println!("reading");
-        inner.poll_read(cx, buf)
-    }
-}
-
 pub struct WebsiteExperiment;
 
 impl WebsiteExperiment {
@@ -105,7 +43,7 @@ impl WebsiteExperiment {
         let mut test_keys = TestKeys::default();
 
         let measurement_start_time = quanta::Instant::now();
-        let mut tracing_collector = tracing::NetworkEventCollector::new(measurement_start_time);
+        let mut tracing_collector = NetworkEventCollector::new(measurement_start_time);
 
         let url = Url::parse(&target.input).unwrap();
         let host = url.host_str().unwrap().to_string();
@@ -125,7 +63,7 @@ impl WebsiteExperiment {
         let socket = addrs.next().unwrap();
 
         let stream = TcpStream::connect(&socket).await.unwrap();
-        let stream_wrapper = TcpStreamWrapper::from_stream(stream);
+        let stream_wrapper = TracingTcpStream::from_stream(stream, transaction.clone());
 
         let mut network_event = transaction.new_network_event();
         network_event.set_proto("tcp");
@@ -140,14 +78,14 @@ impl WebsiteExperiment {
         tls_handshake.add_network_event(&network_event);
         test_keys.tls_handshakes.push(tls_handshake);
 
-        let io: TokioIo<tokio_boring::SslStream<TcpStreamWrapper>> = TokioIo::new(stream);
+        let io: TokioIo<tokio_boring::SslStream<TracingTcpStream>> = TokioIo::new(stream);
         let executor = hyper_util::rt::tokio::TokioExecutor::new();
 
-        let (sender, conn) =
-            hyper::client::conn::http2::handshake::<_, _, Full<Bytes>>(executor, io)
-                .await
-                .map_err(|_| ExperimentError::GenericError)?;
+        let (sender, conn) = http2::handshake::<_, _, Full<Bytes>>(executor, io)
+            .await
+            .map_err(|_| ExperimentError::GenericError)?;
 
+        //stream_wrapper.print_network_events();
         tokio::task::spawn(async move {
             if let Err(e) = conn.await {
                 println!("Error: {:?}", e);
