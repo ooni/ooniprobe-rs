@@ -6,10 +6,11 @@ use tokio::net::TcpStream;
 
 use hyper::client::conn::http2;
 
+use crate::dataformats;
 use crate::dataformats::FromNetworkEvent;
 use crate::tracing::network_event::NetworkEventCollector;
 use crate::tracing::stream::TracingTcpStream;
-use crate::{dataformats, parrot};
+use ooniprobe_services::parrot;
 use tokio::net::lookup_host;
 use url::Url;
 

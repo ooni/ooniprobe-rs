@@ -1,0 +1,15 @@
+[package]
+name = "ooniprobe-services"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+bytes = { workspace = true }
+boring = { workspace = true }
+brotli = { workspace = true }
+tokio = { workspace = true }
+tokio-boring = { workspace = true }
+http = { workspace = true }
+hyper = { workspace = true }
+hyper-util = { workspace = true }
+http-body-util = { workspace = true }
