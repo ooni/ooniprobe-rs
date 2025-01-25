@@ -3,13 +3,17 @@ name = "ooniprobe-services"
 version = { workspace = true }
 edition = { workspace = true }
 
+[features]
+jni-bindings = ["jni"]
+
 [dependencies]
 bytes = { workspace = true }
-boring = { workspace = true }
-brotli = { workspace = true }
 tokio = { workspace = true }
-tokio-boring = { workspace = true }
+jni = { workspace = true, optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rquest = { workspace = true }
 http = { workspace = true }
+url = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
-http-body-util = { workspace = true }
