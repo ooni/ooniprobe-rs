@@ -1,0 +1,22 @@
+[package]
+name = "ooniprobe-experiments"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+
+ooniprobe-services = { workspace = true }
+
+boring = { workspace = true }
+bytes = { workspace = true }
+http = { workspace = true }
+http-body-util = { workspace = true }
+hyper = { workspace = true }
+hyper-util = { workspace = true }
+tokio = { workspace = true }
+tokio-boring = { workspace = true }
+pin-project = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+quanta = { workspace = true }
+url = { workspace = true }
