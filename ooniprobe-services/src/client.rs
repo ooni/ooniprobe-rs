@@ -9,6 +9,8 @@ use std::time::Duration;
 use std::io;
 use tokio::runtime::Runtime;
 
+use crate::dns::DoHDnsResolver;
+
 fn b64_encode(b: &[u8]) -> String {
     general_purpose::STANDARD.encode(b)
 }
@@ -183,8 +185,10 @@ impl ClientBuilder {
     }
 
     pub fn build(self) -> Result<Client, Error> {
-        let mut client_builder =
-            rquest::Client::builder().impersonate(rquest::Impersonate::Chrome118);
+        let resolver = Arc::new(DoHDnsResolver::default()?);
+        let mut client_builder = rquest::Client::builder()
+            .impersonate(rquest::Impersonate::Chrome118)
+            .dns_resolver(resolver);
 
         if let Some(url) = self.client_options.base_url {
             client_builder = client_builder.base_url(&url);

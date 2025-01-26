@@ -15,11 +15,12 @@ edition = "2021"
 ooniprobe-core = { version = "0.1.0", path = "./ooniprobe-core" }
 ooniprobe-experiments = { version = "0.1.0", path = "./ooniprobe-experiments" }
 ooniprobe-services = { version = "0.1.0", path = "./ooniprobe-services" }
+ooniprobe = { version = "0.1.0", path = "./ooniprobe" }
 
 serde = { version = "1.0.216", features = ["serde_derive"] }
 serde_json = "1.0.133"
 serde_derive = "1.0"
-tokio = { version = "1.42.0", features = ["full"] }
+tokio = { version = "1.42.0", features = ["rt"] }
 url = "2.5.4"
 bytes = "1.9.0"
 http-body-util = "0.1.2"
@@ -28,8 +29,11 @@ pin-project = "1"
 jni = "0.21.1"
 hyper-util = { version = "0.1.10", features = ["http1", "http2", "tokio"] }
 hyper = { version = "1.5.2", features = ["client"] }
-rquest = "2.0.0"
+rquest = { version = "2.0.0", features = ["hickory-dns"] }
 quanta = "0.12.4"
 base64 = "0.22.1"
 mime = "0.3.17"
 encoding_rs = "0.8.35"
+hickory-resolver = { version = "0.24.2", features = ["dns-over-https-rustls"] }
+log = "0.4.25"
+rand = "0.8.5"
