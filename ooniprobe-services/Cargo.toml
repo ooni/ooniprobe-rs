@@ -7,6 +7,7 @@ edition = { workspace = true }
 jni-bindings = ["jni"]
 
 [dependencies]
+base64 = { workspace = true }
 bytes = { workspace = true }
 tokio = { workspace = true }
 jni = { workspace = true, optional = true }
@@ -14,6 +15,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 rquest = { workspace = true }
 http = { workspace = true }
+mime = { workspace = true }
 url = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
+encoding_rs = { workspace = true }

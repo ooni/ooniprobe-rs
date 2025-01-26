@@ -5,6 +5,13 @@ use serde_json;
 
 use crate::client::{Client, ClientBuilder, ClientOption};
 
+fn throw_runtime_exception(env: &mut JNIEnv, message: &str) -> JString {
+    let exception_class = env.find_class("java/lang/RuntimeException").unwrap();
+    let message = env.new_string(message).unwrap();
+    env.throw_new(exception_class, message.as_str()).unwrap();
+    env.new_string("").unwrap().into()
+}
+
 #[no_mangle]
 pub extern "system" fn Java_OoniProbeClient_createBuilder(_env: JNIEnv, _class: JClass) -> jlong {
     let builder = Box::new(ClientBuilder::new());
@@ -66,6 +73,7 @@ pub extern "system" fn Java_OoniProbeClient_destroyBuilder(
 ) {
     if builder_ptr != 0 {
         unsafe {
+            // by making _ go out of scope we are deallocating the ClientBuilder
             let _ = Box::from_raw(builder_ptr as *mut ClientBuilder);
         }
     }
@@ -79,6 +87,7 @@ pub extern "system" fn Java_OoniProbeClient_destroyClient(
 ) {
     if client_ptr != 0 {
         unsafe {
+            // by making _ go out of scope we are deallocating the Client
             let _ = Box::from_raw(client_ptr as *mut Client);
         }
     }
@@ -90,7 +99,7 @@ pub extern "system" fn Java_OoniProbeClient_get<'local>(
     _class: JClass<'local>,
     client_ptr: jlong,
     url: JString<'local>,
-) -> jbyteArray {
+) -> JString<'local> {
     if client_ptr == 0 {
         return std::ptr::null_mut();
     }
@@ -102,22 +111,17 @@ pub extern "system" fn Java_OoniProbeClient_get<'local>(
 
     let client = unsafe { &*(client_ptr as *const Client) };
 
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-
-    let result = runtime.block_on(async {
-        match client.get(&url).await {
-            Ok(bytes) => Some(bytes.to_vec()),
-            Err(_) => None,
-        }
-    });
-
+    match client.get(&url) {
+        Ok(response) => match serde_json::to_string(&response) {
+            Ok(json_str) => env.new_string(json_str).unwrap().into(),
+            Err(e) => {
+                throw_runtime_exception(&mut env, &format!("JSON serialization error: {}", e))
+            }
+        },
+        Err(e) => throw_runtime_exception(&mut env, &format!("Request failed: {:?}", e)),
+    }
     match result {
-        Some(bytes) => {
-            let byte_array = env
-                .byte_array_from_slice(&bytes)
-                .expect("Couldn't create java byte array!");
-            byte_array.into_raw()
-        }
-        None => std::ptr::null_mut(),
+        Some(json_str) => env.new_string(json_str).unwrap().into(),
+        None => env.new_string("").unwrap().into(),
     }
 }

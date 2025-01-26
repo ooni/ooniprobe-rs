@@ -29,3 +29,6 @@ hyper-util = { version = "0.1.10", features = ["http1", "http2", "tokio"] }
 hyper = { version = "1.5.2", features = ["client"] }
 rquest = "2.0.0"
 quanta = "0.12.4"
+base64 = "0.22.1"
+mime = "0.3.17"
+encoding_rs = "0.8.35"
