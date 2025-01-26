@@ -1,8 +1,4 @@
-use base64::{
-    alphabet,
-    engine::{self, general_purpose},
-    Engine as _,
-};
+use base64::{engine::general_purpose, Engine as _};
 use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
 use mime::Mime;
@@ -17,11 +13,21 @@ fn b64_encode(b: &[u8]) -> String {
     general_purpose::STANDARD.encode(b)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ClientOption<'a> {
-    BaseUrl(&'a str),
-    Timeout(u64),
-    UserAgent(&'a str),
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ClientOptions {
+    base_url: Option<String>,
+    timeout: Option<f32>,
+    user_agent: Option<String>,
+}
+
+impl ClientOptions {
+    pub fn new() -> Self {
+        Self {
+            base_url: None,
+            timeout: None,
+            user_agent: None,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -29,6 +35,7 @@ pub enum Error {
     InvalidHttpMethod,
     UndetectedCharset,
     Rquest(Box<rquest::Error>),
+    Serialization,
     Io(io::Error),
 }
 
@@ -89,6 +96,10 @@ impl Response {
             body_b64_bytes: None,
         }
     }
+
+    pub fn to_json_str(&self) -> Result<String, Error> {
+        serde_json::to_string(self).map_err(|_| Error::Serialization)
+    }
 }
 
 fn decode_to_text(bytes: &Bytes, headers: &rquest::header::HeaderMap) -> Result<String, Error> {
@@ -111,18 +122,12 @@ fn decode_to_text(bytes: &Bytes, headers: &rquest::header::HeaderMap) -> Result<
 
 pub struct Client {
     inner: Arc<ClientRef>,
-
     rt: Runtime,
 }
 
 impl Client {
     pub fn builder() -> ClientBuilder {
         ClientBuilder::new()
-    }
-
-    pub fn get(&self, url: &str) -> Result<Response, Error> {
-        let request = self.inner.http_client.get(url).build()?;
-        self.execute(request)
     }
 
     pub fn execute(&self, request: rquest::Request) -> Result<Response, Error> {
@@ -158,32 +163,22 @@ pub struct ClientRef {
 
 #[derive(Debug, Clone)]
 pub struct ClientBuilder {
-    base_url: Option<String>,
-    timeout: Option<Duration>,
-    user_agent: Option<String>,
+    client_options: ClientOptions,
 }
 
 impl ClientBuilder {
     pub fn new() -> Self {
         Self {
-            base_url: Some("https://api.ooni.org/".to_string()),
-            timeout: Some(Duration::new(10, 0)),
-            user_agent: Some("ooniprobe".to_string()),
+            client_options: ClientOptions {
+                base_url: Some("https://api.ooni.org/".to_string()),
+                timeout: Some(10.0),
+                user_agent: Some("ooniprobe".to_string()),
+            },
         }
     }
 
-    pub fn set_option(mut self, option: ClientOption) -> Self {
-        match option {
-            ClientOption::BaseUrl(url) => {
-                self.base_url = Some(url.to_string());
-            }
-            ClientOption::Timeout(seconds) => {
-                self.timeout = Some(Duration::from_secs(seconds));
-            }
-            ClientOption::UserAgent(agent) => {
-                self.user_agent = Some(agent.to_string());
-            }
-        }
+    pub fn set_options(mut self, options: ClientOptions) -> Self {
+        self.client_options = options;
         self
     }
 
@@ -191,15 +186,15 @@ impl ClientBuilder {
         let mut client_builder =
             rquest::Client::builder().impersonate(rquest::Impersonate::Chrome118);
 
-        if let Some(url) = self.base_url {
+        if let Some(url) = self.client_options.base_url {
             client_builder = client_builder.base_url(&url);
         }
 
-        if let Some(timeout) = self.timeout {
-            client_builder = client_builder.timeout(timeout);
+        if let Some(timeout) = self.client_options.timeout {
+            client_builder = client_builder.timeout(Duration::from_secs_f32(timeout));
         }
 
-        if let Some(agent) = self.user_agent {
+        if let Some(agent) = self.client_options.user_agent {
             client_builder = client_builder.user_agent(&agent);
         }
 
@@ -208,7 +203,7 @@ impl ClientBuilder {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .expect("failed to build runtime");
+            .expect("failed to tokio build runtime");
 
         Ok(Client {
             inner: Arc::new(ClientRef { http_client }),
@@ -224,20 +219,32 @@ mod tests {
     #[test]
     fn test_get_oonirun_descriptor() {
         let client = Client::builder().build().unwrap();
-        let resp = client
-            .get("/api/v2/oonirun/links/10001/engine-descriptor/1")
+        let request = client
+            .request("GET", "/api/v2/oonirun/links/10001/engine-descriptor/1")
+            .expect("failed to build request")
+            .build()
             .unwrap();
+        let resp = client.execute(request).unwrap();
         let resp_json = serde_json::to_string(&resp).unwrap();
         println!("{}", resp_json);
     }
 
     #[test]
     fn test_binary_data() {
+        let mut client_options = ClientOptions::new();
+        client_options.base_url = Some("https://httpbin.org/".to_string());
         let client = Client::builder()
-            .set_option(ClientOption::BaseUrl("https://httpbin.org/"))
+            .set_options(client_options)
             .build()
             .unwrap();
-        let resp = client.get("stream-bytes/100").unwrap();
+        let request = client
+            .request("GET", "stream-bytes/100")
+            .expect("failed to build request")
+            .build()
+            .unwrap();
+        let resp = client.execute(request).unwrap();
+        assert_eq!(resp.body_b64_bytes.is_some(), true);
+        assert_eq!(resp.body_text.is_none(), true);
         let resp_json = serde_json::to_string(&resp).unwrap();
         println!("{}", resp_json);
     }

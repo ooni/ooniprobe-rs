@@ -1,8 +1,9 @@
 [workspace]
 members = [
-    #"ooniprobe-core",
+    "ooniprobe",
+    "ooniprobe-core",
     "ooniprobe-services",
-    #"ooniprobe-experiments"
+    #"ooniprobe-experiments",
 ]
 resolver = "2"
 
