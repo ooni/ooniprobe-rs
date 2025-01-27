@@ -6,6 +6,16 @@ package main
 import kotlin.test.*
 import kotlin.test.Test
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.*
+import kotlinx.serialization.json.*
+
+@Serializable
+data class HttpBinResponse(
+        val args: Map<String, String>,
+        val headers: Map<String, String>,
+        val origin: String,
+        val url: String,
+)
 
 class OoniProbeClientTest {
     @Test
@@ -19,13 +29,25 @@ class OoniProbeClientTest {
         assertTrue(res.body_text!!.length > 0)
     }
     @Test
+    fun getFullChaining() = runBlocking {
+        val res =
+                OoniProbeClient.Builder()
+                        .setOptions(ClientOptions("https://httpbin.org/", 10, "ooniprobe"))
+                        .build()
+                        .request("GET", "/get")
+                        .addHeader("Sample", "value")
+                        .send()
+        val json = Json.decodeFromString<HttpBinResponse>(res.body_text!!)
+        assertEquals(json.headers.get("Sample"), "value")
+    }
+
+    @Test
     fun getRequestBuilderWorks() = runBlocking {
         val client =
                 OoniProbeClient.Builder()
-                        .setOptions(ClientOptions("https://api.ooni.org/", 10, "ooniprobe"))
+                        .setOptions(ClientOptions("https://httpbin.org/", 10, "ooniprobe"))
                         .build()
-        val request = client.request("GET", "https://example.com")
-        val res = request.send()
+        var res = client.request("GET", "/get").send()
         assertEquals(res.status_code, 200)
         assertTrue(res.body_text!!.length > 0)
     }
