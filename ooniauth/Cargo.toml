@@ -1,0 +1,9 @@
+[package]
+name = "ooniauth"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+crate_type = ["cdylib"]
+
+[dependencies]
