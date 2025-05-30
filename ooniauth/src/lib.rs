@@ -1,3 +1,8 @@
+use rand::Rng;
+
+#[derive(Debug, Clone)]
+struct CredentialError;
+
 /*
 	Protocol overview: 
 	USER: “POST register/” credential_sign_request
@@ -11,16 +16,28 @@ Check that the public attributes “age” and “measurement_count” are set c
 “Unblind the credential and store it permanently.
 */
 
-pub fn create_sign_request(nym_id: String) -> String {
-    return sprintf!("xxxx");
+pub fn create_sign_request(nym_id: &[u8]) -> Result<Vec<u8>, CredentialError> {
+    // creates a sign_request with random fields `nym_id`
+    let mut rng = rand::thread_rng();
+    let sign_request: Vec<u8> = (0..nym_id.len()).map(|_| rng.gen()).collect();
+    sign_request
 }
 
-pub fn create_sign_response(sign_request: String) -> String {
-    return sprintf!("xxxx");
+pub fn create_sign_response(sign_request: &[u8]) -> Result<Vec<u8>, CredentialError> {
+    // Set the attributes “age” and “measurement_count” in the credential request
+    // Re-randomize attributes “nym_id”
+    // Sign the credential and send it over
+    let mut rng = rand::thread_rng();
+    let blinded_sign_response: Vec<u8> = (0..sign_request.len()).map(|_| rng.gen()).collect();
+    blinded_sign_response
 }
 
-pub fn unblind_sign_response(sign_response: String) -> String {
-    return sprintf!("xxxx");
+// Q(michele): what's the key we need in here to unblind this?
+pub fn unblind_sign_response(sign_response: &[u8]) -> Result<Vec<u8>, CredentialError> {
+    // “Unblind the credential and store it permanently.
+    let mut rng = rand::thread_rng();
+    let sign_response: Vec<u8> = (0..sign_response.len()).map(|_| rng.gen()).collect();
+    sign_response
 }
 
 /*
@@ -36,7 +53,7 @@ new.age = old.age
 new.measurement_count = old.measurement_count + 1
 Send 
 Measurement
-NYM, TOKEN, age_msb, measurement_count_msb
+NYM, age_msb, measurement_count_msb
 presentation_message for the predicate: 
 NYM is correctly computed
 PRF(UserAuthCredential.nym_id, nym_scope) = NYM
@@ -58,26 +75,29 @@ Respond with credential_sign_response
 Finalize credential_sign_response and store UserAuthCredential 
 */
 
-enum NymScope {
-}
-
 pub struct SubmissionMeta {
-    nym: String
-    token: String
+    nym: Vec<u8>
     age_msb: u32
     measurement_count_msb: u32
 }
 
 // Measurement
 // NYM, TOKEN, age_msb, measurement_count_msb
-pub fn create_submission(
-    nym_id: String,
-    nym_scope: NymScope,
-    current_credential: String
-) -> SubmissionMeta {
-    return SubmissionMeta{}
+pub fn create_submission(nym_id: &[u8], nym_scope: &[u8], current_credential: &[u8]) -> Result<SubmissionMeta, CredentialError> {
+    let mut nym = Vec::new();
+    nym.extend_from_slice(nym_id);
+    nym.extend_from_slice(nym_scope);
+    nym.extend_from_slice(current_credential);
+
+    SubmissionMeta {
+        nym,
+        age_msb: 0,
+        measurement_count_msb: 0,
+    }
 }
 
-pub fn validate_submission(submission_meta: SubmissionMeta) -> String {
-    return sprintf!("XXXX")
+pub fn validate_submission(submission_meta: SubmissionMeta) -> Result<Vec<u8>, CredentialError> {
+    let mut rng = rand::thread_rng();
+    let credential_sign_response: Vec<u8> = (0..submission_meta.nym.len()).map(|_| rng.gen()).collect();
+    credential_sign_response
 }
