@@ -1,0 +1,6 @@
+[package]
+name = "ooniprobe-helpers"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
