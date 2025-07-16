@@ -1,0 +1,94 @@
+use tokio::net::TcpStream;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use ooniprobe_helpers::helper_runner::run;
+use log::{error, info, debug};
+use serde::Serialize;
+use serde_json;
+
+#[tokio::main]
+async fn main() {
+    run("json_helper", "8000", handle_json_helper).await;
+}
+
+#[derive(Serialize)]
+pub struct Response {
+    request_line: String,
+    request_headers: Vec<Vec<String>>
+}
+
+impl Response {
+    pub fn new() -> Response {
+        Response { request_line: String::new(), request_headers: Vec::new() }
+    }
+}
+
+/*
+    This is a simplified version of http to overcome
+    header lowercase normalization. It does not actually implement the HTTP
+    protocol, but only the subset of it that we need for testing.
+
+    What this HTTP channel currently does is process the HTTP Request Line and
+    the Request Headers and returns them in a JSON datastructure in the order
+    we received them.
+
+    The returned JSON dict looks like so:
+
+    {
+        'request_headers':
+            [['User-Agent', 'IE6'], ['Content-Length', 200]]
+        'request_line':
+            'GET / HTTP/1.1'
+    }
+*/
+async fn handle_json_helper(socket: TcpStream) {
+    let mut reader = BufReader::new(socket);
+    let mut buff = String::new();
+    let mut resp = Response::new();
+
+    // Read request line
+    let mut lines = reader.lines();
+    match lines.next_line().await {
+        Ok(None) => {
+            error!("Connection closed by client")
+        }
+        Ok(Some(l)) => {
+            resp.request_line = l.trim().to_string();
+        }
+        Err(e) => {
+            error!("Error reading request: {}", e)
+        }
+    }
+
+    // Read headers
+    loop {
+        match lines.next_line().await  {
+            Ok(Some(line)) =>  {
+
+                let line = line.trim();
+                if line.is_empty() {
+                    break;
+                }
+
+                if let Some((key, val)) = line.split_once(":") {
+                    resp.request_headers.push(
+                        vec![
+                            key.trim().to_string(), 
+                            val.trim().to_string()
+                            ]
+                        );
+                }
+            }
+            Ok(None) => error!("Connection closed by client"),
+            Err(e) => error!("Could not read headers: {}", e)
+        }
+    }
+
+    // Write response back 
+    let body = match serde_json::to_string(&resp){
+        Ok(s) => s,
+        Err(e) => {
+            panic!("Unable to serialize response object. Error: {}", e);
+        }
+    };
+
+}
