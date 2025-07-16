@@ -1,5 +1,6 @@
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
 use ooniprobe_helpers::helper_runner::run;
+use log::{error, debug};
 
 
 #[tokio::main]
@@ -12,13 +13,13 @@ async fn handle_tcp_echo(socket: TcpStream) {
     let mut socket = socket;
     match socket.read(&mut buffer).await {
         Ok(n) => {
-            println!("Connection received. {} bytes read", n);
+            debug!("Receiving {} bytes", n);
             if let Err(e) = socket.write_all(&buffer[0..n]).await {
-                eprintln!("Error trying to write response {}", e);
+                error!("Error trying to write response {}", e);
             }
         }
         Err(e) => {
-            eprintln!("Error trying to read from request: {}", e);
+            error!("Error trying to read from request: {}", e);
         }
     };
 }
