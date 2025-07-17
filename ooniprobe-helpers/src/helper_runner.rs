@@ -1,13 +1,12 @@
-use tokio::net::{TcpListener, TcpStream};
-use std::future::Future;
 use env_logger::Env;
 use log::info;
+use std::future::Future;
+use tokio::net::{TcpListener, TcpStream};
 
-
-pub async fn run<F, Fut>(name: &str, port: &str, test_helper: F) 
-    where 
-        F : Fn(TcpStream) -> Fut,
-        Fut : Future<Output = ()>
+pub async fn run<F, Fut>(name: &str, port: &str, test_helper: F)
+where
+    F: Fn(TcpStream) -> Fut,
+    Fut: Future<Output = ()>,
 {
     init_logging();
     let addr = format!("0.0.0.0:{}", port);

@@ -1,7 +1,9 @@
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
+use log::{debug, error};
 use ooniprobe_helpers::helper_runner::run;
-use log::{error, debug};
-
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+};
 
 #[tokio::main]
 async fn main() {
