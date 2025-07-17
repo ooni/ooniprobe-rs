@@ -17,7 +17,10 @@ where
         .unwrap_or_else(|e| panic!("Couldn't start {name} server: {e}"));
 
     loop {
-        let (socket, _) = listener.accept().await.unwrap_or_else(|e| panic!("Could not accept new msg: {e}"));
+        let (socket, _) = listener
+            .accept()
+            .await
+            .unwrap_or_else(|e| panic!("Could not accept new msg: {e}"));
         (test_helper)(socket).await;
     }
 }
