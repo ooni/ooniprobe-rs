@@ -47,7 +47,8 @@ The returned JSON dict looks like so:
 'request_headers':
 [['User-Agent', 'IE6'], ['Content-Length', 200]]
 'request_line':
-'GET / HTTP/1.1'
+'GET / HTTP/1.1',
+'headers_dict' : {'Accept': ['application/json', 'text/plain']}
 }
 */
 async fn handle_json_helper(socket: TcpStream) {
