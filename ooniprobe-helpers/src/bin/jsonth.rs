@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use tokio::net::TcpStream;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
 use ooniprobe_helpers::helper_runner::run;
@@ -13,12 +15,17 @@ async fn main() {
 #[derive(Serialize)]
 pub struct Response {
     request_line: String,
-    request_headers: Vec<Vec<String>>
+    request_headers: Vec<Vec<String>>,
+    headers_dict: HashMap<String, Vec<String>>
 }
 
 impl Response {
     pub fn new() -> Response {
-        Response { request_line: String::new(), request_headers: Vec::new() }
+        Response { 
+            request_line: String::new(), 
+            request_headers: Vec::new(), 
+            headers_dict : HashMap::new() 
+        }
     }
 }
 
@@ -63,6 +70,7 @@ async fn handle_json_helper(socket: TcpStream) {
     }
 
     // Read headers
+    
     loop {
         match lines.next_line().await  {
             Ok(Some(line)) =>  {
@@ -72,13 +80,23 @@ async fn handle_json_helper(socket: TcpStream) {
                     break;
                 }
 
-                if let Some((key, val)) = line.split_once(":") {
-                    resp.request_headers.push(
-                        vec![
-                            key.trim().to_string(), 
-                            val.trim().to_string()
+                match  line.split_once(":") {
+                    Some((key, val)) => {
+                        let key = key.trim();
+                        let val = val.trim();
+                        resp.request_headers.push(
+                            vec![
+                            key.to_string(), 
+                            val.to_string()
                             ]
                         );
+                        resp
+                                .headers_dict
+                                .entry(key.to_string())
+                                .or_insert_with(Vec::new)
+                                .push(val.to_string());
+                    },
+                    None => error!("malformed header: {}", line)
                 }
             }
             Ok(None) => {
