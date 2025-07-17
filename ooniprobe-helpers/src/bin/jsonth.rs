@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use log::{debug, error, info};
 use ooniprobe_helpers::helper_runner::run;
 use serde::Serialize;
-use serde_json;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 
@@ -15,21 +14,11 @@ async fn main() {
     run("json_helper", "8000", handle_json_helper).await;
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 pub struct Response {
     request_line: String,
     request_headers: Vec<Vec<String>>,
     headers_dict: HashMap<String, Vec<String>>,
-}
-
-impl Response {
-    pub fn new() -> Response {
-        Response {
-            request_line: String::new(),
-            request_headers: Vec::new(),
-            headers_dict: HashMap::new(),
-        }
-    }
 }
 
 /*
@@ -54,7 +43,7 @@ The returned JSON dict looks like so:
 async fn handle_json_helper(socket: TcpStream) {
     let mut socket = socket;
     let reader = BufReader::new(&mut socket);
-    let mut resp = Response::new();
+    let mut resp = Response::default();
 
     // Read request line
     let mut lines = reader.lines();
@@ -64,7 +53,7 @@ async fn handle_json_helper(socket: TcpStream) {
             return;
         }
         Err(e) => {
-            error!("Error reading request: {}", e);
+            error!("Error reading request: {e}");
             return;
         }
         Ok(Some(l)) => {
@@ -117,14 +106,14 @@ async fn handle_json_helper(socket: TcpStream) {
                         resp.request_headers
                             .push(vec![key.to_string(), val.to_string()]);
                     }
-                    None => error!("Got malformed HTTP Header request field: {}", line),
+                    None => error!("Got malformed HTTP Header request field: {line}"),
                 }
             }
             Ok(None) => {
                 error!("Connection closed by client");
                 return;
             }
-            Err(e) => panic!("Could not read headers: {}", e),
+            Err(e) => panic!("Could not read headers: {e}"),
         }
     }
 
@@ -134,7 +123,7 @@ async fn handle_json_helper(socket: TcpStream) {
         let val = &header[1];
         resp.headers_dict
             .entry(key.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(val.clone());
     }
     log_response(&resp);
@@ -143,7 +132,7 @@ async fn handle_json_helper(socket: TcpStream) {
     let body = match serde_json::to_string(&resp) {
         Ok(s) => s,
         Err(e) => {
-            panic!("Unable to serialize response object. Error: {}", e);
+            panic!("Unable to serialize response object. Error: {e}");
         }
     };
 
@@ -155,7 +144,7 @@ async fn handle_json_helper(socket: TcpStream) {
 
     match socket.write_all(response.as_bytes()).await {
         Ok(_) => debug!("Response sent successfully"),
-        Err(e) => error!("Couldn't write response back: {}", e),
+        Err(e) => error!("Couldn't write response back: {e}"),
     }
 }
 
@@ -184,9 +173,9 @@ fn log_response(resp: &Response) {
 }
 
 async fn return_error(mut socket: TcpStream, error_code: u32, error_msg: &str) {
-    let response = format!("HTTP/1.1 {} {}", error_code, error_msg);
-    error!("{}", response);
+    let response = format!("HTTP/1.1 {error_code} {error_msg}");
+    error!("{response}");
     if let Err(e) = socket.write_all(response.as_bytes()).await {
-        panic!("Could not send response: {}", e);
+        panic!("Could not send response: {e}");
     }
 }

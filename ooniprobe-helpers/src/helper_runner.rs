@@ -9,15 +9,15 @@ where
     Fut: Future<Output = ()>,
 {
     init_logging();
-    let addr = format!("0.0.0.0:{}", port);
-    info!("Starting {} helper in: {}", name, addr);
+    let addr = format!("0.0.0.0:{port}");
+    info!("Starting {name} helper in: {addr}");
 
     let listener = TcpListener::bind(addr)
         .await
-        .expect(format!("Couldn't start {} server", name).as_str());
+        .unwrap_or_else(|e| panic!("Couldn't start {name} server: {e}"));
 
     loop {
-        let (socket, _) = listener.accept().await.expect("Could not accept new msg");
+        let (socket, _) = listener.accept().await.unwrap_or_else(|e| panic!("Could not accept new msg: {e}"));
         (test_helper)(socket).await;
     }
 }

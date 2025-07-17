@@ -15,13 +15,13 @@ async fn handle_tcp_echo(socket: TcpStream) {
     let mut socket = socket;
     match socket.read(&mut buffer).await {
         Ok(n) => {
-            debug!("Receiving {} bytes", n);
+            debug!("Receiving {n} bytes");
             if let Err(e) = socket.write_all(&buffer[0..n]).await {
-                error!("Error trying to write response {}", e);
+                error!("Error trying to write response {e}");
             }
         }
         Err(e) => {
-            error!("Error trying to read from request: {}", e);
+            error!("Error trying to read from request: {e}");
         }
     };
 }
