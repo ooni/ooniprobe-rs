@@ -7,6 +7,9 @@ use log::{error, info, debug};
 use serde::Serialize;
 use serde_json;
 
+const MAX_HEADER_LINE_LEN: usize = 16384;
+const MAX_HEADERS: usize = 500;
+
 #[tokio::main]
 async fn main() {
     run("json_helper", "8000", handle_json_helper).await;
@@ -30,23 +33,23 @@ impl Response {
 }
 
 /*
-    This is a simplified version of http to overcome
-    header lowercase normalization. It does not actually implement the HTTP
-    protocol, but only the subset of it that we need for testing.
+   This is a simplified version of http to overcome
+   header lowercase normalization. It does not actually implement the HTTP
+   protocol, but only the subset of it that we need for testing.
 
-    What this HTTP channel currently does is process the HTTP Request Line and
-    the Request Headers and returns them in a JSON datastructure in the order
-    we received them.
+   What this HTTP channel currently does is process the HTTP Request Line and
+   the Request Headers and returns them in a JSON datastructure in the order
+   we received them.
 
-    The returned JSON dict looks like so:
+   The returned JSON dict looks like so:
 
-    {
-        'request_headers':
-            [['User-Agent', 'IE6'], ['Content-Length', 200]]
-        'request_line':
-            'GET / HTTP/1.1'
-    }
-*/
+   {
+   'request_headers':
+   [['User-Agent', 'IE6'], ['Content-Length', 200]]
+   'request_line':
+   'GET / HTTP/1.1'
+   }
+   */
 async fn handle_json_helper(socket: TcpStream) {
     let mut socket = socket;
     let reader = BufReader::new(&mut socket);
@@ -70,14 +73,24 @@ async fn handle_json_helper(socket: TcpStream) {
     }
 
     // Read headers
-    
     loop {
         match lines.next_line().await  {
             Ok(Some(line)) =>  {
 
+                if resp.request_headers.len() >= MAX_HEADERS {
+                    error!("Maximum number of headers received.");
+                    return_error(socket, 400, "too_many_headers").await;
+                    return;
+                }
+
                 let line = line.trim();
-                if line.is_empty() {
+                if line.is_empty() { // End of headers
                     break;
+                }
+
+                if line.len() > MAX_HEADER_LINE_LEN {
+                    return_error(socket, 400, "max_header_length_exceeeded").await;
+                    return;
                 }
 
                 match  line.split_once(":") {
@@ -91,12 +104,12 @@ async fn handle_json_helper(socket: TcpStream) {
                             ]
                         );
                         resp
-                                .headers_dict
-                                .entry(key.to_string())
-                                .or_insert_with(Vec::new)
-                                .push(val.to_string());
-                    },
-                    None => error!("malformed header: {}", line)
+                            .headers_dict
+                            .entry(key.to_string())
+                            .or_insert_with(Vec::new)
+                            .push(val.to_string());
+                        },
+                    None => error!("Got malformed HTTP Header request field: {}", line)
                 }
             }
             Ok(None) => {
@@ -106,7 +119,7 @@ async fn handle_json_helper(socket: TcpStream) {
             Err(e) => panic!("Could not read headers: {}", e)
         }
     }
-    
+
     log_response(&resp);
 
     // Write response back 
@@ -118,11 +131,11 @@ async fn handle_json_helper(socket: TcpStream) {
     };
 
     let response = format!(
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type:application/json\r\n\r\n{}",
-                body.len(),
-                body
-            );
-    
+        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type:application/json\r\n\r\n{}",
+        body.len(),
+        body
+    );
+
     match socket.write_all(response.as_bytes()).await {
         Ok(_) => debug!("Response sent successfully"),
         Err(e) => error!("Couldn't write response back: {}", e)
@@ -135,6 +148,7 @@ fn log_response(resp: &Response) {
     for header in &resp.request_headers {
         if header[0].to_lowercase() == "user-agent" {
             user_agent = header[1].as_str();
+            break;
         }
     }
 
@@ -142,8 +156,17 @@ fn log_response(resp: &Response) {
     for header in &resp.request_headers {
         if header[0].to_lowercase() == "host" {
             host = header[1].as_str();
+            break;
         }
     }
 
     info!("{} - User-Agent: {} - Host: {}", resp.request_line, user_agent, host);
+}
+
+async fn return_error(mut socket: TcpStream, error_code: u32, error_msg: &str) {
+    let response = format!("HTTP/1.1 {} {}", error_code, error_msg);
+    error!("{}", response);
+    if let Err(e) = socket.write_all(response.as_bytes()).await {
+        panic!("Could not send response: {}", e);
+    }
 }
