@@ -3,10 +3,9 @@ use log::info;
 use std::future::Future;
 use tokio::net::{TcpListener, TcpStream};
 
-pub async fn run<F, Fut>(name: &str, port: &str, test_helper: F)
+pub async fn run<Fut>(name: &str, port: &str, test_helper: fn(TcpStream) -> Fut)
 where
-    F: Fn(TcpStream) -> Fut,
-    Fut: Future<Output = ()>,
+    Fut: Future<Output = ()> + Send + 'static,
 {
     init_logging();
     let addr = format!("0.0.0.0:{port}");
@@ -21,7 +20,10 @@ where
             .accept()
             .await
             .unwrap_or_else(|e| panic!("Could not accept new msg: {e}"));
-        (test_helper)(socket).await;
+        tokio::spawn(async move {
+            // Process each socket concurrently.
+            (test_helper)(socket).await
+        });
     }
 }
 
