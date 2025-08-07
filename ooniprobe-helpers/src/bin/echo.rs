@@ -11,7 +11,7 @@ async fn main() {
 }
 
 async fn handle_tcp_echo(socket: TcpStream) {
-    let mut buffer = [0u8; 4069];
+    let mut buffer = [0u8; 4096];
     let mut socket = socket;
     info!("Connection received");
     loop {
@@ -32,4 +32,3 @@ async fn handle_tcp_echo(socket: TcpStream) {
         };
     }
 }
-
