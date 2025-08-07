@@ -68,7 +68,7 @@ where
                 .serve_connection(io, service_fn(handler))
                 .await
             {
-                eprintln!("Error serving connection: {:?}", err);
+                eprintln!("Error serving connection: {err:?}");
             }
         });
     }
