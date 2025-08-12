@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "ooniprobe",
-    "ooniprobe-core", "ooniprobe-helpers",
+    "ooniprobe-core", 
+    "ooniprobe-helpers",
     "ooniprobe-services",
     "ooniprobe-helpers"
     #"ooniprobe-experiments",
