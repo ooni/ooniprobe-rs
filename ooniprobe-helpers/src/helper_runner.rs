@@ -8,7 +8,7 @@ use bytes::Bytes;
 use hyper_util::rt::TokioIo;
 
 use env_logger::Env;
-use log::info;
+use log::{error, info};
 use std::future::Future;
 use tokio::net::{TcpListener, TcpStream};
 
@@ -68,7 +68,7 @@ where
                 .serve_connection(io, service_fn(handler))
                 .await
             {
-                eprintln!("Error serving connection: {err:?}");
+                error!("Error serving connection: {err:?}");
             }
         });
     }
