@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use hyper::{server::conn::http1, service::service_fn};
+use hyper::{body::Body, server::conn::http1, service::service_fn};
 use http_body_util::{combinators::BoxBody, BodyExt};
 use hyper::{Request, Response, StatusCode, header};
 use hyper_util::rt::TokioIo;
@@ -78,7 +78,7 @@ async fn handle_json_helper(socket : TcpStream) {
     hyper can't give you the request line, so we parse the request line manually
     before calling this handler
  */
-async fn handle_json_helper_headers(request_line: String, request : Request<hyper::body::Incoming>) -> Result<Response<BoxBody<Bytes, hyper::Error>>>{
+async fn handle_json_helper_headers(request_line: String, request : Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error>{
     let headers = request.headers();
     let mut resp = JsonResponse::default();
     resp.request_line = request_line;
@@ -131,18 +131,12 @@ async fn parse_request_line(socket : &TcpStream) -> Result<String> {
     }
 }
 
-fn make_response(resp : &JsonResponse) -> Result<Response<BoxBody<Bytes, hyper::Error>>>{
+fn make_response(resp : &JsonResponse) -> Result<Response<Full<Bytes>>, hyper::Error>{
     let json = serde_json::to_vec(&resp).expect("Couldn't serialize response");
-    let body = Full::from(Bytes::from(json))
-                                        // map unfallible to a hyper error. 
-                                        // Since unfallible will never occur, use anyerror
-                                        .map_err(|_| unreachable!()) 
-                                        .boxed();
-
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(body)
+        .body(Full::new(Bytes::from(json)))
         .unwrap())
 }
 
