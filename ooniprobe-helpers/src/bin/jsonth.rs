@@ -1,23 +1,24 @@
 use std::collections::HashMap;
 
+use http_body_util::{combinators::BoxBody, BodyExt};
+use hyper::{Request, Response, StatusCode, header};
 use log::{debug, error, info};
-use ooniprobe_helpers::helper_runner::run;
+use ooniprobe_helpers::helper_runner::{run_http_server};
 use serde::Serialize;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::TcpStream;
+use anyhow::Result;
+use bytes::Bytes;
+use http_body_util::Full;
 
-const MAX_HEADER_LINE_LEN: usize = 16384;
-const MAX_HEADERS: usize = 500;
 
 #[tokio::main]
 async fn main() {
-    run("json_helper", "8000", handle_json_helper).await;
+    // run_tcp_server("json_helper", "8000", handle_json_helper).await;
+    run_http_server("json_helper", "8000", handle_json_helper).await;
 }
 
 #[derive(Serialize, Default)]
-pub struct Response {
+pub struct JsonResponse {
     request_line: String,
-    request_headers: Vec<Vec<String>>,
     headers_dict: HashMap<String, Vec<String>>,
 }
 
@@ -40,128 +41,59 @@ The returned JSON dict looks like so:
 'headers_dict' : {'Accept': ['application/json', 'text/plain']}
 }
 */
-async fn handle_json_helper(socket: TcpStream) {
-    let mut socket = socket;
-    let reader = BufReader::new(&mut socket);
-    let mut resp = Response::default();
+async fn handle_json_helper(request : Request<hyper::body::Incoming>) -> Result<Response<BoxBody<Bytes, hyper::Error>>>{
+    let mut resp = JsonResponse::default();
+    let headers = request.headers();
 
-    // Read request line
-    let mut lines = reader.lines();
-    match lines.next_line().await {
-        Ok(None) => {
-            error!("Connection closed by client");
-            return;
-        }
-        Err(e) => {
-            error!("Error reading request: {e}");
-            return;
-        }
-        Ok(Some(l)) => {
-            resp.request_line = l.trim().to_string();
-        }
+    resp.request_line = "NOT IMPLEMENTED".to_string();
+    for (header, value ) in headers.iter() {
+        let header_list = resp
+            .headers_dict
+            .entry(header.to_string())
+            .or_insert_with(Vec::new);
+
+        header_list
+            .push(
+                value
+                .to_str()
+                .expect("Unexpected non-ascii header")
+                .to_string()
+            );
     }
 
-    // Read headers
-    loop {
-        match lines.next_line().await {
-            Ok(Some(line)) => {
-                if resp.request_headers.len() >= MAX_HEADERS {
-                    error!("Maximum number of headers received.");
-                    return_error(socket, 400, "too_many_headers").await;
-                    return;
-                }
-
-                if line.is_empty() {
-                    // End of headers
-                    break;
-                }
-
-                if line.len() > MAX_HEADER_LINE_LEN {
-                    return_error(socket, 400, "max_header_length_exceeeded").await;
-                    return;
-                }
-
-                // For multiline headers
-                let line_bytes = line.as_bytes();
-                if line_bytes[0] == b' ' || line_bytes[0] == b'\t' {
-                    // This is to support header field value folding over multiple lines
-                    // as specified by rfc2616.
-                    match resp.request_headers.last_mut() {
-                        None => {
-                            return_error(socket, 400, "malformed_header").await;
-                            return;
-                        }
-                        Some(h) => {
-                            h[1] = format!("{}\n{}", h[1], line);
-                        }
-                    }
-                    continue;
-                }
-
-                // For regular headers
-                match line.split_once(":") {
-                    Some((key, val)) => {
-                        let key = key.trim();
-                        let val = val.trim();
-                        resp.request_headers
-                            .push(vec![key.to_string(), val.to_string()]);
-                    }
-                    None => error!("Got malformed HTTP Header request field: {line}"),
-                }
-            }
-            Ok(None) => {
-                error!("Connection closed by client");
-                return;
-            }
-            Err(e) => panic!("Could not read headers: {e}"),
-        }
-    }
-
-    // Fill headers dict
-    for header in &resp.request_headers {
-        let key = &header[0];
-        let val = &header[1];
-        resp.headers_dict
-            .entry(key.clone())
-            .or_default()
-            .push(val.clone());
-    }
     log_response(&resp);
-
-    // Write response back
-    let body = match serde_json::to_string(&resp) {
-        Ok(s) => s,
-        Err(e) => {
-            panic!("Unable to serialize response object. Error: {e}");
-        }
-    };
-
-    let response = format!(
-        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type:application/json\r\n\r\n{}",
-        body.len(),
-        body
-    );
-
-    match socket.write_all(response.as_bytes()).await {
-        Ok(_) => debug!("Response sent successfully"),
-        Err(e) => error!("Couldn't write response back: {e}"),
-    }
+    return make_response(&resp)
 }
 
-fn log_response(resp: &Response) {
+fn make_response(resp : &JsonResponse) -> Result<Response<BoxBody<Bytes, hyper::Error>>>{
+    let json = serde_json::to_vec(&resp).expect("Couldn't serialize response");
+    let body = Full::from(Bytes::from(json))
+                                        // map unfallible to a hyper error. 
+                                        // Since unfallible will never occur, use anyerror
+                                        .map_err(|_| unreachable!()) 
+                                        .boxed();
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(body)
+        .unwrap())
+}
+
+fn log_response(resp: &JsonResponse) {
     // request line, user agent, host
     let mut user_agent = "<not provided>";
-    for header in &resp.request_headers {
-        if header[0].to_lowercase() == "user-agent" {
-            user_agent = header[1].as_str();
+    for (key, value) in &resp.headers_dict {
+        if key.to_lowercase() == "user-agent" {
+            user_agent = value[0].as_str();
             break;
         }
     }
 
     let mut host = "<not provided>";
-    for header in &resp.request_headers {
-        if header[0].to_lowercase() == "host" {
-            host = header[1].as_str();
+    for (key, value) in &resp.headers_dict{
+        if key.to_lowercase() == "host" {
+            host = value[0].as_str();
             break;
         }
     }
@@ -170,12 +102,4 @@ fn log_response(resp: &Response) {
         "{} - User-Agent: {} - Host: {}",
         resp.request_line, user_agent, host
     );
-}
-
-async fn return_error(mut socket: TcpStream, error_code: u32, error_msg: &str) {
-    let response = format!("HTTP/1.1 {error_code} {error_msg}");
-    error!("{response}");
-    if let Err(e) = socket.write_all(response.as_bytes()).await {
-        panic!("Could not send response: {e}");
-    }
 }
