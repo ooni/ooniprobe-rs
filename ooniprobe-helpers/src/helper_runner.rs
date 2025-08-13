@@ -25,10 +25,14 @@ where
         .unwrap_or_else(|e| panic!("Couldn't start {name} server: {e}"));
 
     loop {
-        let (socket, _) = listener
-            .accept()
-            .await
-            .unwrap_or_else(|e| panic!("Could not accept new msg: {e}"));
+        let (socket, _) = match listener.accept().await {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Could not accept new msg: {e}");
+                continue;
+            }
+        };
+
         tokio::spawn(async move {
             // Process each socket concurrently.
             (test_helper)(socket).await
@@ -54,10 +58,14 @@ where
     info!("Listening on http://{addr}");
 
     loop {
-        let (stream, _) = listener
-            .accept()
-            .await
-            .unwrap_or_else(|e| panic!("Could not accept new msg: {e}"));
+        let (stream, _) = match listener.accept().await {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Could not accept new msg: {e}");
+                continue;
+            }
+        };
+
 
         let io = TokioIo::new(stream);
         let handler = handler.clone();
