@@ -29,7 +29,7 @@ http = "1.2.0"
 pin-project = "1"
 jni = "0.21.1"
 hyper-util = { version = "0.1.10", features = ["http1", "http2", "tokio"] }
-hyper = { version = "1.5.2", features = ["client"] }
+hyper = { version = "1.5.2", features = ["client", "server"] }
 rquest = "2.0.0"
 quanta = "0.12.4"
 base64 = "0.22.1"
