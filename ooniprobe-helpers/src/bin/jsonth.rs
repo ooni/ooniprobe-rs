@@ -23,7 +23,7 @@ pub struct JsonResponse {
 }
 
 /**
-Process the HTTP Request Line and the Request Headers and 
+Process the HTTP Request Line and the Request Headers and
 returns them in a JSON datastructure in the order
 we received them.
 
@@ -81,12 +81,17 @@ async fn handle_json_helper_headers(
     for (header, value) in headers.iter() {
         let header_list = resp.headers_dict.entry(header.to_string()).or_default();
 
-        header_list.push(
-            value
-                .to_str()
-                .expect("Unexpected non-ascii header")
-                .to_string(),
-        );
+        match value.to_str() {
+            Ok(s) => header_list.push(s.to_string()),
+            Err(e) => {
+                let msg = format!("Unexpected non-ascii header: {e}");
+                error!("{msg}");
+                return make_error_response(
+                    msg,
+                    StatusCode::BAD_REQUEST,
+                )
+            }
+        }
     }
 
     log_response(&resp);
@@ -103,17 +108,19 @@ async fn parse_request_line(socket: &TcpStream) -> Result<String> {
         Ok(0) => Err(anyhow!("Connection closed unexpectedly")),
         Ok(n) => {
             // Parse bytes as str
-            let line = std::str::from_utf8(&buffer[..n])
-                .unwrap_or_else(|e| panic!("Unable to parse request line: {e}"));
+            let line = match std::str::from_utf8(&buffer[..n]) {
+                Ok(v) => v,
+                Err(e) => return Err(anyhow!("Unable to parse request line: {e}")),
+            };
 
             // Parse only request line
-            Ok(line
+            line
                 .split("\r\n")
                 .next()
-                .expect("Bad http request")
-                .to_string())
+                .map(|s| s.to_string())
+                .ok_or(anyhow!("Bad http request"))
         }
-        Err(e) => panic!("Unable to read from socket: {e}"),
+        Err(e) => Err(anyhow!("Unable to read from socket: {e}")),
     }
 }
 
@@ -121,6 +128,25 @@ fn make_response(resp: &JsonResponse) -> Result<Response<Full<Bytes>>, hyper::Er
     let json = serde_json::to_vec(&resp).expect("Couldn't serialize response");
     Ok(Response::builder()
         .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Full::new(Bytes::from(json)))
+        .unwrap())
+}
+
+#[derive(Serialize)]
+pub struct ErrorResponse {
+    message: String,
+}
+
+fn make_error_response(
+    message: String,
+    status: StatusCode,
+) -> Result<Response<Full<Bytes>>, hyper::Error> {
+    let resp = ErrorResponse { message };
+    let json = serde_json::to_vec(&resp).expect("Couldn't serialize response");
+
+    Ok(Response::builder()
+        .status(status)
         .header(header::CONTENT_TYPE, "application/json")
         .body(Full::new(Bytes::from(json)))
         .unwrap())

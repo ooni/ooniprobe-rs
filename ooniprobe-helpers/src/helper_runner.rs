@@ -66,7 +66,6 @@ where
             }
         };
 
-
         let io = TokioIo::new(stream);
         let handler = handler.clone();
 
