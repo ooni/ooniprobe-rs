@@ -22,26 +22,21 @@ pub struct JsonResponse {
     headers_dict: HashMap<String, Vec<String>>,
 }
 
-/*
-This is a simplified version of http to overcome
-header lowercase normalization. It does not actually implement the HTTP
-protocol, but only the subset of it that we need for testing.
-
-What this HTTP channel currently does is process the HTTP Request Line and
-the Request Headers and returns them in a JSON datastructure in the order
+/**
+Process the HTTP Request Line and the Request Headers and 
+returns them in a JSON datastructure in the order
 we received them.
 
 The returned JSON dict looks like so:
 
+```
 {
-'request_headers':
-[['User-Agent', 'IE6'], ['Content-Length', 200]]
 'request_line':
 'GET / HTTP/1.1',
 'headers_dict' : {'Accept': ['application/json', 'text/plain']}
 }
+```
 */
-
 async fn handle_json_helper(socket: TcpStream) {
     // Note that hyper can't give us the request line, so we parse it before
     // going to hyper
