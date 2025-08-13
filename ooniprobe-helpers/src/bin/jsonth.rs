@@ -29,7 +29,7 @@ we received them.
 
 The returned JSON dict looks like so:
 
-```
+```json
 {
 'request_line':
 'GET / HTTP/1.1',
