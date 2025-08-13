@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::{header, Request, Response, StatusCode};
@@ -40,12 +40,11 @@ The returned JSON dict looks like so:
 async fn handle_json_helper(socket: TcpStream) {
     // Note that hyper can't give us the request line, so we parse it before
     // going to hyper
-    let request_line = match parse_request_line(&socket).await {
-        Ok(v) => v,
-        Err(e) => {
-            error!("Couldn't parse request line: {e}");
-            return;
-        }
+    let request_line = parse_request_line(&socket).await;
+
+    if let Err(e) = request_line {
+        error!("Couldn't parse request line: {e}");
+        return;
     };
 
     // Parse headers using hyper to parse the request.
@@ -54,7 +53,7 @@ async fn handle_json_helper(socket: TcpStream) {
         .preserve_header_case(true)
         .serve_connection(
             io,
-            service_fn(|req| handle_json_helper_headers(request_line.clone(), req)),
+            service_fn(move |req| handle_json_helper_headers(request_line.clone(), req)),
         )
         .await
     {
@@ -69,9 +68,18 @@ async fn handle_json_helper(socket: TcpStream) {
    before calling this handler
 */
 async fn handle_json_helper_headers(
-    request_line: String,
+    request_line: Result<String, String>,
     request: Request<hyper::body::Incoming>,
 ) -> Result<Response<Full<Bytes>>, hyper::Error> {
+    let request_line = match request_line {
+        Ok(s) => s,
+        Err(e) => {
+            return make_error_response(
+                format!("Couldn't parse request line: {e}"),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        }
+    };
     let headers = request.headers();
     let mut resp = JsonResponse {
         request_line,
@@ -86,10 +94,7 @@ async fn handle_json_helper_headers(
             Err(e) => {
                 let msg = format!("Unexpected non-ascii header: {e}");
                 error!("{msg}");
-                return make_error_response(
-                    msg,
-                    StatusCode::BAD_REQUEST,
-                )
+                return make_error_response(msg, StatusCode::BAD_REQUEST);
             }
         }
     }
@@ -98,29 +103,28 @@ async fn handle_json_helper_headers(
     make_response(&resp)
 }
 
-async fn parse_request_line(socket: &TcpStream) -> Result<String> {
+async fn parse_request_line(socket: &TcpStream) -> Result<String, String> {
     // Recommended size for uri is 8000 octets, longest part of the request line
     // https://www.rfc-editor.org/rfc/rfc9110.html#name-uri-references
     let mut buffer = [0u8; 8192];
 
     // use peek to avoid consuming from the stream
     match socket.peek(&mut buffer).await {
-        Ok(0) => Err(anyhow!("Connection closed unexpectedly")),
+        Ok(0) => Err("Connection closed unexpectedly".to_string()),
         Ok(n) => {
             // Parse bytes as str
             let line = match std::str::from_utf8(&buffer[..n]) {
                 Ok(v) => v,
-                Err(e) => return Err(anyhow!("Unable to parse request line: {e}")),
+                Err(e) => return Err(format!("Unable to parse request line: {e}")),
             };
 
             // Parse only request line
-            line
-                .split("\r\n")
+            line.split("\r\n")
                 .next()
                 .map(|s| s.to_string())
-                .ok_or(anyhow!("Bad http request"))
+                .ok_or("Bad http request".to_string())
         }
-        Err(e) => Err(anyhow!("Unable to read from socket: {e}")),
+        Err(e) => Err(format!("Unable to read from socket: {e}")),
     }
 }
 
