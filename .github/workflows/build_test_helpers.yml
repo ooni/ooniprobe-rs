@@ -45,10 +45,8 @@ jobs:
           mkdir -p dist
           VERSION="${{ steps.version.outputs.version }}"
           HASH="${{ steps.commit.outputs.hash }}"
-      
           # All test helpers binaries
           BINARIES=("jsonth" "echo")
-      
           for bin in "${BINARIES[@]}"; do
             src="../target/release/$bin"
             dest="dist/${bin}-${VERSION}-${HASH}"
@@ -59,6 +57,9 @@ jobs:
               echo "⚠️ Skipping $bin (not found in $src)"
             fi
           done
+          echo "Files in dist: "
+          ls dist
+          
           
       - name: Upload artifact
         uses: "actions/upload-artifact@v4.6.2"
