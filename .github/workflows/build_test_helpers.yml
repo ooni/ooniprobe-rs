@@ -40,13 +40,25 @@ jobs:
       - name: Build release binary
         run: cargo build --release
       
-      - name: Prepare artifact
+      - name: Prepare artifacts
         run: |
           mkdir -p dist
-          cp target/release/ooniprobe-helpers dist/
           VERSION=${{ steps.version.outputs.version }}
           HASH=${{ steps.commit.outputs.hash }}
-          mv dist/ooniprobe-helpers dist/ooniprobe-helpers-${VERSION}-${HASH}
+      
+          # All test helpers binaries
+          BINARIES=("jsonth" "echo")
+      
+          for bin in "${BINARIES[@]}"; do
+            src="target/release/$bin"
+            dest="dist/${bin}-${VERSION}-${HASH}"
+            if [ -f "$src" ]; then
+              cp "$src" "$dest"
+              echo "✅ ${bin} ready -> ${dest} "
+            else
+              echo "⚠️ Skipping $bin (not found in $src)"
+            fi
+          done
           
       - name: Upload artifact
         uses: "actions/upload-artifact@v4.6.2"
