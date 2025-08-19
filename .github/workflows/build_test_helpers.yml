@@ -65,7 +65,7 @@ jobs:
         uses: "actions/upload-artifact@v4.6.2"
         with: 
           name: "ooniprobe-helpers@${{steps.version.outputs.version}}-${{steps.commit.outputs.hash}}"
-          path: "dist/*"
+          path: "dist"
       - name: Print artifact info
         run: | 
           echo "Artifact successfully built ✅"
