@@ -28,7 +28,7 @@ jobs:
       - name: Extract crate version
         id: version
         run: |
-          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          VERSION=$(grep '^version' ../Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get short commit hash
@@ -43,8 +43,8 @@ jobs:
       - name: Prepare artifacts
         run: |
           mkdir -p dist
-          VERSION=${{ steps.version.outputs.version }}
-          HASH=${{ steps.commit.outputs.hash }}
+          VERSION="${{ steps.version.outputs.version }}"
+          HASH="${{ steps.commit.outputs.hash }}"
       
           # All test helpers binaries
           BINARIES=("jsonth" "echo")
