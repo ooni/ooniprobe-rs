@@ -50,7 +50,7 @@ jobs:
           BINARIES=("jsonth" "echo")
       
           for bin in "${BINARIES[@]}"; do
-            src="target/release/$bin"
+            src="../target/release/$bin"
             dest="dist/${bin}-${VERSION}-${HASH}"
             if [ -f "$src" ]; then
               cp "$src" "$dest"
@@ -68,4 +68,4 @@ jobs:
       - name: Print artifact info
         run: | 
           echo "Artifact successfully built ✅"
-          echo "   Version: ooniprobe-helpers@${{ steps.version.outputs.version }}-${{ steps.commit.outputs.hash }}
+          echo "   Version: ooniprobe-helpers@${{ steps.version.outputs.version }}-${{ steps.commit.outputs.hash }}"
