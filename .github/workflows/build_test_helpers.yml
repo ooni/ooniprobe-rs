@@ -1,0 +1,58 @@
+name: Build and release test helpers
+on:
+  push: 
+    paths: 
+      - 'ooniprobe-helpers/**'
+    branches: 
+      - 'main'
+      - 'build-ci' # Delete before merging
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults: 
+      run: 
+        working-directory: "ooniprobe-helpers/"
+    steps: 
+      - name: Checkout repository 
+        uses: actions/checkout@v5.0.0
+        
+      - name: Install rustup toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with: 
+          toolchain: "stable-x86_64-unknown-linux-gnu"
+        
+      - name: Cache Cargo registry + build
+        uses: Swatinem/rust-cache@v2.8.0
+        
+      - name: Extract crate version
+        id: version
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get short commit hash
+        id: commit
+        run: |
+          HASH="${GITHUB_SHA::4}"
+          echo "hash=${HASH}" >> $GITHUB_OUTPUT
+        
+      - name: Build release binary
+        run: cargo build --release
+      
+      - name: Prepare artifact
+        run: |
+          mkdir -p dist
+          cp target/release/ooniprobe-helpers dist/
+          VERSION=${{ steps.version.outputs.version }}
+          HASH=${{ steps.commit.outputs.hash }}
+          mv dist/ooniprobe-helpers dist/ooniprobe-helpers-${VERSION}-${HASH}
+          
+      - name: Upload artifact
+        uses: "actions/upload-artifact@v4.6.2"
+        with: 
+          name: "ooniprobe-helpers@${{steps.version.outputs.version}}-${{steps.commit.outputs.hash}}"
+          path: "dist/*"
+      - name: Print artifact info
+        run: | 
+          echo "Artifact successfully built ✅"
+          echo "   Version: ooniprobe-helpers@${{ steps.version.outputs.version }}-${{ steps.commit.outputs.hash }}
