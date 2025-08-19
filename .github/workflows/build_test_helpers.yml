@@ -41,6 +41,7 @@ jobs:
         run: cargo build --release
       
       - name: Prepare artifacts
+        id: prepare
         run: |
           mkdir -p dist
           VERSION="${{ steps.version.outputs.version }}"
@@ -58,14 +59,16 @@ jobs:
             fi
           done
           echo "Files in dist: "
+          pwd
           ls dist
-          
+          # Export dist path as step output
+          echo "dist_dir=$(pwd)/dist" >> $GITHUB_OUTPUT
           
       - name: Upload artifact
         uses: "actions/upload-artifact@v4.6.2"
         with: 
           name: "ooniprobe-helpers@${{steps.version.outputs.version}}-${{steps.commit.outputs.hash}}"
-          path: "dist"
+          path: "${{ steps.prepare.outputs.dist_dir }}"
       - name: Print artifact info
         run: | 
           echo "Artifact successfully built ✅"
