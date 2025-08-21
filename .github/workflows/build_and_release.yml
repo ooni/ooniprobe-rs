@@ -51,8 +51,9 @@ jobs:
           PARENT_DIR='./build'
           for dir in "$PARENT_DIR"/*/; do
               dir_name=$(basename "$dir")
-              mkdir -p "./dist/${dir_name}"
-              cp $PARENT_DIR/$dir_name/release/* "./dist/${dir_name}@${VERSION}-${HASH}/"
+              dist_name="${dir_name}@${VERSION}-${HASH}"
+              mkdir -p "./dist/$dist_name"
+              cp $PARENT_DIR/$dir_name/release/* "./dist/$dist_name/"
           done
           echo "Files in dist: "
           pwd
