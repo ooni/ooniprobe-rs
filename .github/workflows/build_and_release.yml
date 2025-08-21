@@ -53,7 +53,16 @@ jobs:
               dir_name=$(basename "$dir")
               dist_name="${dir_name}@${VERSION}-${HASH}"
               mkdir -p "./dist/$dist_name"
-              cp -r $PARENT_DIR/$dir_name/release/* "./dist/$dist_name/"
+              
+              # find exec files
+              exe_files=()
+              src_dir="$PARENT_DIR/$dir_name/release"
+              for f in "$src_dir"/*; do [[ -x $f && -f $f ]] && exe_files+=( "$f" ); done
+
+              # Copy exe files
+              cp -r "${exe_files[@]}" "$./dist/$dist_name/"
+              # Copy .so files
+              cp -r $PARENT_DIR/$dir_name/release/*.so "./dist/$dist_name/"
           done
           echo "Files in dist: "
           pwd
@@ -64,9 +73,9 @@ jobs:
       - name: Upload artifact
         uses: "actions/upload-artifact@v4.6.2"
         with: 
-          name: "ooniprobe-helpers@${{steps.version.outputs.version}}-${{steps.commit.outputs.hash}}"
+          name: "ooniprobe-rs@${{steps.version.outputs.version}}-${{steps.commit.outputs.hash}}"
           path: "${{ steps.prepare.outputs.dist_dir }}"
       - name: Print artifact info
         run: | 
           echo "Artifact successfully built ✅"
-          echo "   Version: ooniprobe-helpers@${{ steps.version.outputs.version }}-${{ steps.commit.outputs.hash }}"
+          echo "   Version: ooniprobe-rs@${{ steps.version.outputs.version }}-${{ steps.commit.outputs.hash }}"
