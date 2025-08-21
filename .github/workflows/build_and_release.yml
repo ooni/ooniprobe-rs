@@ -9,6 +9,8 @@ on:
       - 'build-ci' # TODO Delete before merging
 env:
   GH_TOKEN: ${{ github.token }}
+permissions:
+  contents: write    # allows creating releases, uploading assets
 jobs:
   test:
     runs-on: ubuntu-latest
