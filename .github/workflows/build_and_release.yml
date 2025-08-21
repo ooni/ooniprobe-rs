@@ -3,7 +3,7 @@ on:
   push: 
     paths: 
       - 'ooniprobe-helpers/**'
-      - '.github/workflows/build_test_helpers.yml'
+      - '.github/workflows/build_and_release.yml'
     branches: 
       - 'main'
       - 'build-ci' # TODO Delete before merging
