@@ -50,10 +50,9 @@ jobs:
           # All test helpers binaries
           PARENT_DIR='./build'
           for dir in "$PARENT_DIR"/*/; do
-              # Remove trailing slash for cleaner output
               dir_name=$(basename "$dir")
               mkdir -p "./dist/${dir_name}"
-              cp "${PARENT_DIR}/${dir_name}/release/*" "./dist/${dir_name}@${VERSION}-${HASH}/"
+              cp $PARENT_DIR/$dir_name/release/* "./dist/${dir_name}@${VERSION}-${HASH}/"
           done
           echo "Files in dist: "
           pwd
