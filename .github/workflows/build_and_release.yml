@@ -72,6 +72,9 @@ jobs:
               if find "$src_dir" -maxdepth 1 -type f -name "*.so" | grep -q .; then
                   cp -r $src_dir/*.so "./dist/$dist_name"
               fi
+
+              # Generate .tar.gz files
+              tar -czf ./dist/$dist_name.tar.gz ./dist/$dist_name
           done
           echo "Files in dist: "
           pwd
@@ -84,7 +87,7 @@ jobs:
         run: | 
           VERSION_TAG="${{steps.prepare.outputs.version_tag}}"
           DIST_DIR="${{steps.prepare.outputs.dist_dir}}"
-          gh release create $VERSION_TAG $DIST_DIR/* -t "Release $VERSION_TAG" -n "Release binaries for ooniprobe-rs"
+          gh release create $VERSION_TAG $DIST_DIR/*.tar.gz -t "Release $VERSION_TAG" -n "Release binaries for ooniprobe-rs"
           
       - name: Upload artifact
         uses: "actions/upload-artifact@v4.6.2"
