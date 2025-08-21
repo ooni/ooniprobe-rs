@@ -62,7 +62,9 @@ jobs:
               # Copy exe files
               cp -r "${exe_files[@]}" "./dist/$dist_name/"
               # Copy .so files
-              cp -r $PARENT_DIR/$dir_name/release/*.so "./dist/$dist_name/"
+              if find "$src_dir" -maxdepth 1 -type f -name "*.so" | grep -q .; then
+                  cp -r $src_dir/*.so "./dist/$dist_name"
+              fi
           done
           echo "Files in dist: "
           pwd
