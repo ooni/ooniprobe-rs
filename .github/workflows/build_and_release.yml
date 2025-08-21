@@ -73,8 +73,10 @@ jobs:
                   cp -r $src_dir/*.so "./dist/$dist_name"
               fi
 
-              # Generate .tar.gz files
-              tar -czf ./dist/$dist_name.tar.gz -C ./dist/$dist_name/
+              # Generate .tar.gz files            
+              if [ -n "$(ls -A "./dist/$dist_name/" 2>/dev/null)" ]; then
+                  tar -czf ./dist/$dist_name.tar.gz -C ./dist/$dist_name/
+              fi
           done
           echo "Files in dist: "
           pwd
