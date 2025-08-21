@@ -60,7 +60,7 @@ jobs:
               for f in "$src_dir"/*; do [[ -x $f && -f $f ]] && exe_files+=( "$f" ); done
 
               # Copy exe files
-              cp -r "${exe_files[@]}" "$./dist/$dist_name/"
+              cp -r "${exe_files[@]}" "./dist/$dist_name/"
               # Copy .so files
               cp -r $PARENT_DIR/$dir_name/release/*.so "./dist/$dist_name/"
           done
