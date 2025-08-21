@@ -6,13 +6,10 @@ on:
       - '.github/workflows/build_test_helpers.yml'
     branches: 
       - 'main'
-      - 'build-ci' # Delete before merging
+      - 'build-ci' # TODO Delete before merging
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults: 
-      run: 
-        working-directory: "ooniprobe-helpers/"
     steps: 
       - name: Checkout repository 
         uses: actions/checkout@v5.0.0
@@ -28,7 +25,7 @@ jobs:
       - name: Extract crate version
         id: version
         run: |
-          VERSION=$(grep '^version' ../Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get short commit hash
@@ -38,7 +35,11 @@ jobs:
           echo "hash=${HASH}" >> $GITHUB_OUTPUT
         
       - name: Build release binary
-        run: cargo build --release
+        run: |
+          CRATES=("ooniprobe-helpers" "ooniprobe-services" "ooniprobe" "ooniprobe-core" )
+          for bin in "${CRATES[@]}"; do
+              cargo build --release -p $bin --target-dir ./build/$bin 
+          done
       
       - name: Prepare artifacts
         id: prepare
@@ -47,16 +48,12 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           HASH="${{ steps.commit.outputs.hash }}"
           # All test helpers binaries
-          BINARIES=("jsonth" "echo")
-          for bin in "${BINARIES[@]}"; do
-            src="../target/release/$bin"
-            dest="dist/${bin}-${VERSION}-${HASH}"
-            if [ -f "$src" ]; then
-              cp "$src" "$dest"
-              echo "✅ ${bin} ready -> ${dest} "
-            else
-              echo "⚠️ Skipping $bin (not found in $src)"
-            fi
+          PARENT_DIR='./build'
+          for dir in "$PARENT_DIR"/*/; do
+              # Remove trailing slash for cleaner output
+              dir_name=$(basename "$dir")
+              mkdir -p "./dist/${dir_name}"
+              cp "${dir_name}/release/*" "./dist/${dir_name}@${VERSION}-${HASH}/"
           done
           echo "Files in dist: "
           pwd
