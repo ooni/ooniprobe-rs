@@ -60,7 +60,10 @@ jobs:
               for f in "$src_dir"/*; do [[ -x $f && -f $f ]] && exe_files+=( "$f" ); done
 
               # Copy exe files
-              cp -r "${exe_files[@]}" "./dist/$dist_name/"
+              if (( ${#exe_files[@]} > 0 )); then
+                  cp -r "${exe_files[@]}" "./dist/$dist_name/"
+              fi
+              
               # Copy .so files
               if find "$src_dir" -maxdepth 1 -type f -name "*.so" | grep -q .; then
                   cp -r $src_dir/*.so "./dist/$dist_name"
