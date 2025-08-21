@@ -53,7 +53,7 @@ jobs:
               dir_name=$(basename "$dir")
               dist_name="${dir_name}@${VERSION}-${HASH}"
               mkdir -p "./dist/$dist_name"
-              cp $PARENT_DIR/$dir_name/release/* "./dist/$dist_name/"
+              cp -r $PARENT_DIR/$dir_name/release/* "./dist/$dist_name/"
           done
           echo "Files in dist: "
           pwd
