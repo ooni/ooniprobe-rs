@@ -41,8 +41,8 @@ jobs:
       - name: Build release binary
         run: |
           CRATES=("ooniprobe-helpers" "ooniprobe-services" "ooniprobe" "ooniprobe-core" )
-          for bin in "${CRATES[@]}"; do
-              cargo build --release -p $bin --target-dir ./build/$bin 
+          for crate in "${CRATES[@]}"; do
+              cargo build --release -p $crate --target-dir ./build/$crate 
           done
       
       - name: Prepare artifacts
@@ -74,7 +74,7 @@ jobs:
               fi
 
               # Generate .tar.gz files
-              tar -czf ./dist/$dist_name.tar.gz ./dist/$dist_name
+              tar -czf ./dist/$dist_name.tar.gz -C ./dist/$dist_name/
           done
           echo "Files in dist: "
           pwd
