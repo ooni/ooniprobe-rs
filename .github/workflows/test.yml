@@ -1,16 +1,11 @@
 name: test
 on:
   pull_request: 
-    paths: 
-      - 'ooniprobe-helpers/**'
     branches: 
       - 'main'
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults: 
-      run: 
-        working-directory: "ooniprobe-helpers/"
     steps: 
       - name: Checkout repository 
         uses: actions/checkout@v5.0.0
