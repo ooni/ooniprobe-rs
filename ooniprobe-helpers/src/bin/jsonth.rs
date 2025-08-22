@@ -7,13 +7,14 @@ use hyper::{header, Request, Response, StatusCode};
 use hyper::{server::conn::http1, service::service_fn};
 use hyper_util::rt::TokioIo;
 use log::{error, info};
-use ooniprobe_helpers::helper_runner::run_tcp_server;
+use ooniprobe_helpers::helper_runner::{read_port, run_tcp_server};
 use serde::Serialize;
 use tokio::net::TcpStream;
 
 #[tokio::main]
 async fn main() {
-    run_tcp_server("json_helper", "8000", handle_json_helper).await;
+    let port = read_port("8000");
+    run_tcp_server("json_helper", &port, handle_json_helper).await;
 }
 
 #[derive(Serialize, Default)]

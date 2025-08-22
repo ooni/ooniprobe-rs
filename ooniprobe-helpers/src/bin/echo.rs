@@ -1,10 +1,11 @@
 use log::{error, info};
-use ooniprobe_helpers::helper_runner::run_tcp_server;
+use ooniprobe_helpers::helper_runner::{read_port, run_tcp_server};
 use tokio::{io, net::TcpStream};
 
 #[tokio::main]
 async fn main() {
-    run_tcp_server("echoth", "8000", handle_tcp_echo).await;
+    let port = read_port("8000");
+    run_tcp_server("echoth", &port, handle_tcp_echo).await;
 }
 
 async fn handle_tcp_echo(mut stream: TcpStream) {

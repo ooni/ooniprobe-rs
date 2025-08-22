@@ -6,11 +6,13 @@ use hyper::{Request, Response};
 use anyhow::Result;
 use bytes::Bytes;
 use hyper_util::rt::TokioIo;
+use tokio::net::{TcpListener, TcpStream};
 
 use env_logger::Env;
 use log::{error, info};
+
 use std::future::Future;
-use tokio::net::{TcpListener, TcpStream};
+use std::env;
 
 pub async fn run_tcp_server<Fut>(name: &str, port: &str, test_helper: fn(TcpStream) -> Fut)
 where
@@ -83,4 +85,15 @@ where
 
 pub fn init_logging() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+}
+
+pub fn read_port(default: &str) -> String {
+    let args: Vec<String> = env::args().collect();
+    if let Some(i) = args.iter().position(|s| s == "--port") {
+        args.get(i + 1)
+            .expect("Missing argument for --port. Usage: --port <port_num>")
+            .clone()
+    } else {
+        default.into()
+    }
 }
