@@ -11,8 +11,8 @@ use tokio::net::{TcpListener, TcpStream};
 use env_logger::Env;
 use log::{error, info};
 
-use std::future::Future;
 use std::env;
+use std::future::Future;
 
 pub async fn run_tcp_server<Fut>(name: &str, port: &str, test_helper: fn(TcpStream) -> Fut)
 where
