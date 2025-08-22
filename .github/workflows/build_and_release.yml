@@ -90,11 +90,6 @@ jobs:
           DIST_DIR="${{steps.prepare.outputs.dist_dir}}"
           gh release create $VERSION_TAG $DIST_DIR/*.tar.gz -t "Release $VERSION_TAG" -n "Release binaries for ooniprobe-rs"
           
-      - name: Upload artifact
-        uses: "actions/upload-artifact@v4.6.2"
-        with: 
-          name: "ooniprobe-rs@${{steps.version.outputs.version}}-${{steps.commit.outputs.hash}}"
-          path: "${{ steps.prepare.outputs.dist_dir }}"
       - name: Print artifact info
         run: | 
           echo "Artifact successfully built ✅"
