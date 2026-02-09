@@ -1,0 +1,240 @@
+name: Build FFI Artifacts
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-ffi:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: libooniprobe_userauth.a
+            asset_name: libooniprobe_userauth-linux-amd64.a
+          
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: libooniprobe_userauth.a
+            asset_name: libooniprobe_userauth-linux-arm64.a
+          
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: libooniprobe_userauth.a
+            asset_name: libooniprobe_userauth-darwin-amd64.a
+          
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: libooniprobe_userauth.a
+            asset_name: libooniprobe_userauth-darwin-arm64.a
+          
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: ooniprobe_userauth.lib
+            asset_name: ooniprobe_userauth-windows-amd64.lib
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build library
+        run: cargo build --release --target ${{ matrix.target }} -p ooniprobe-userauth
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.asset_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.asset_name }}
+          path: artifacts/${{ matrix.asset_name }}
+
+  generate-header:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install cbindgen
+        run: cargo install cbindgen
+
+      - name: Generate C header
+        run: |
+          cbindgen --crate ooniprobe-userauth --output ooniprobe_userauth.h --lang c
+          
+      - name: Upload header
+        uses: actions/upload-artifact@v3
+        with:
+          name: ooniprobe_userauth.h
+          path: ooniprobe_userauth.h
+
+  create-release-bundle:
+    needs: [build-ffi, generate-header]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Create release bundle
+        run: |
+          mkdir -p release
+          # Copy header
+          cp artifacts/ooniprobe_userauth.h/ooniprobe_userauth.h release/
+          
+          # Copy libraries organized by platform
+          mkdir -p release/lib/linux/amd64 release/lib/linux/arm64
+          mkdir -p release/lib/darwin/amd64 release/lib/darwin/arm64
+          mkdir -p release/lib/windows/amd64
+          
+          cp artifacts/libooniprobe_userauth-linux-amd64.a/libooniprobe_userauth-linux-amd64.a release/lib/linux/amd64/libooniprobe_userauth.a
+          cp artifacts/libooniprobe_userauth-linux-arm64.a/libooniprobe_userauth-linux-arm64.a release/lib/linux/arm64/libooniprobe_userauth.a
+          cp artifacts/libooniprobe_userauth-darwin-amd64.a/libooniprobe_userauth-darwin-amd64.a release/lib/darwin/amd64/libooniprobe_userauth.a
+          cp artifacts/libooniprobe_userauth-darwin-arm64.a/libooniprobe_userauth-darwin-arm64.a release/lib/darwin/arm64/libooniprobe_userauth.a
+          cp artifacts/ooniprobe_userauth-windows-amd64.lib/ooniprobe_userauth-windows-amd64.lib release/lib/windows/amd64/ooniprobe_userauth.lib
+          
+          # Create README
+          cat > release/README.md << 'EOF'
+          # OONI Probe UserAuth FFI Bindings
+          
+          This bundle contains the compiled libraries and header file for Go FFI integration.
+          
+          ## Contents
+          
+          - `ooniprobe_userauth.h` - C header file for FFI
+          - `lib/` - Compiled static libraries for each platform
+            - `linux/amd64/` - Linux x86_64
+            - `linux/arm64/` - Linux ARM64
+            - `darwin/amd64/` - macOS x86_64
+            - `darwin/arm64/` - macOS ARM64 (Apple Silicon)
+            - `windows/amd64/` - Windows x86_64
+          
+          ## Usage in Go
+          
+          1. Copy the appropriate library for your platform to your Go project
+          2. Copy the header file
+          3. Import and use as shown in the documentation
+          
+          ## Example CGo directives
+```go
+          // #cgo CFLAGS: -I${SRCDIR}
+          // #cgo linux,amd64 LDFLAGS: -L${SRCDIR}/lib/linux/amd64 -looniprobe_userauth
+          // #cgo linux,arm64 LDFLAGS: -L${SRCDIR}/lib/linux/arm64 -looniprobe_userauth
+          // #cgo darwin,amd64 LDFLAGS: -L${SRCDIR}/lib/darwin/amd64 -looniprobe_userauth
+          // #cgo darwin,arm64 LDFLAGS: -L${SRCDIR}/lib/darwin/arm64 -looniprobe_userauth
+          // #cgo windows,amd64 LDFLAGS: -L${SRCDIR}/lib/windows/amd64 -looniprobe_userauth
+          // #include "ooniprobe_userauth.h"
+          import "C"
+```
+          EOF
+          
+          # Create tarball
+          cd release
+          tar -czf ../ooniprobe-userauth-ffi.tar.gz *
+          cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ooniprobe-userauth-ffi.tar.gz
+            artifacts/ooniprobe_userauth.h/ooniprobe_userauth.h
+            artifacts/libooniprobe_userauth-linux-amd64.a/libooniprobe_userauth-linux-amd64.a
+            artifacts/libooniprobe_userauth-linux-arm64.a/libooniprobe_userauth-linux-arm64.a
+            artifacts/libooniprobe_userauth-darwin-amd64.a/libooniprobe_userauth-darwin-amd64.a
+            artifacts/libooniprobe_userauth-darwin-arm64.a/libooniprobe_userauth-darwin-arm64.a
+            artifacts/ooniprobe_userauth-windows-amd64.lib/ooniprobe_userauth-windows-amd64.lib
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job to always create artifacts even for non-release commits
+  create-artifact-bundle:
+    needs: [build-ffi, generate-header]
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.ref, 'refs/tags/v')"
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Create bundle
+        run: |
+          mkdir -p bundle
+          cp artifacts/ooniprobe_userauth.h/ooniprobe_userauth.h bundle/
+          
+          # Create lib directories
+          mkdir -p bundle/lib/linux/amd64 bundle/lib/linux/arm64
+          mkdir -p bundle/lib/darwin/amd64 bundle/lib/darwin/arm64
+          mkdir -p bundle/lib/windows/amd64
+          
+          # Copy libraries
+          cp artifacts/libooniprobe_userauth-linux-amd64.a/libooniprobe_userauth-linux-amd64.a bundle/lib/linux/amd64/libooniprobe_userauth.a || true
+          cp artifacts/libooniprobe_userauth-linux-arm64.a/libooniprobe_userauth-linux-arm64.a bundle/lib/linux/arm64/libooniprobe_userauth.a || true
+          cp artifacts/libooniprobe_userauth-darwin-amd64.a/libooniprobe_userauth-darwin-amd64.a bundle/lib/darwin/amd64/libooniprobe_userauth.a || true
+          cp artifacts/libooniprobe_userauth-darwin-arm64.a/libooniprobe_userauth-darwin-arm64.a bundle/lib/darwin/arm64/libooniprobe_userauth.a || true
+          cp artifacts/ooniprobe_userauth-windows-amd64.lib/ooniprobe_userauth-windows-amd64.lib bundle/lib/windows/amd64/ooniprobe_userauth.lib || true
+          
+          # Create tarball
+          tar -czf ooniprobe-userauth-ffi-${{ github.sha }}.tar.gz -C bundle .
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ffi-bundle-${{ github.sha }}
+          path: ooniprobe-userauth-ffi-${{ github.sha }}.tar.gz
+          retention-days: 30
