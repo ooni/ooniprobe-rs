@@ -1,10 +1,8 @@
-name: OONI probe userauth builds
+name: Build & Attach FFI Artifacts
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-  workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
   build-ffi:
@@ -14,23 +12,19 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: libooniprobe_userauth.a
-            out_name: libooniprobe_userauth-linux-amd64.a
+            out: libooniprobe_userauth-linux-amd64.a
 
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            artifact_name: libooniprobe_userauth.a
-            out_name: libooniprobe_userauth-linux-arm64.a
+            out: libooniprobe_userauth-linux-arm64.a
 
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: libooniprobe_userauth.a
-            out_name: libooniprobe_userauth-darwin-amd64.a
+            out: libooniprobe_userauth-darwin-amd64.a
 
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: ooniprobe_userauth.lib
-            out_name: ooniprobe_userauth-windows-amd64.lib
+            out: ooniprobe_userauth-windows-amd64.lib
 
     runs-on: ${{ matrix.os }}
 
@@ -43,7 +37,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
 
-      - name: Install cross toolchain (Linux arm64)
+      - name: Install Linux ARM64 toolchain
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
@@ -64,14 +58,19 @@ jobs:
       - name: Collect artifact
         shell: bash
         run: |
-          mkdir -p artifacts
-          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.out_name }}
+          mkdir -p dist
+          if [[ "${{ matrix.target }}" == "x86_64-pc-windows-msvc" ]]; then
+            cp target/${{ matrix.target }}/release/ooniprobe_userauth.lib dist/${{ matrix.out }}
+          else
+            cp target/${{ matrix.target }}/release/libooniprobe_userauth.a dist/${{ matrix.out }}
+          fi
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: ${{ matrix.out_name }}
-          path: artifacts/${{ matrix.out_name }}
+          files: dist/${{ matrix.out }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   generate-header:
     runs-on: ubuntu-latest
@@ -90,8 +89,9 @@ jobs:
       - name: Generate header
         run: cbindgen --crate ooniprobe-userauth --output ooniprobe_userauth.h --lang c
 
-      - name: Upload header
-        uses: actions/upload-artifact@v3
+      - name: Upload header to GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: ooniprobe_userauth.h
-          path: ooniprobe_userauth.h
+          files: ooniprobe_userauth.h
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
