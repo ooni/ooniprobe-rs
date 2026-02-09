@@ -68,7 +68,7 @@ jobs:
           cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.out_name }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.out_name }}
           path: artifacts/${{ matrix.out_name }}
@@ -91,7 +91,7 @@ jobs:
         run: cbindgen --crate ooniprobe-userauth --output ooniprobe_userauth.h --lang c
 
       - name: Upload header
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: ooniprobe_userauth.h
           path: ooniprobe_userauth.h
