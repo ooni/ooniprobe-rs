@@ -4,7 +4,8 @@ members = [
     "ooniprobe-core",
     "ooniprobe-services",
     "ooniprobe-userauth",
-    #"ooniprobe-experiments",
+    "ooniprobe-ffi",
+    "uniffi-bindgen"
 ]
 resolver = "2"
 

@@ -1,0 +1,69 @@
+namespace ooniprobe {
+   [Throws=OoniError]
+    HttpResponse client_get(
+        string url,
+        sequence<KeyValue> headers,
+        sequence<KeyValue> query
+    );
+
+    [Throws=OoniError]
+    HttpResponse client_post(
+        string url,
+        sequence<KeyValue> headers,
+        string payload
+    );
+
+    [Throws=OoniError]
+    RegistrationResult userauth_register(
+        string url,
+        string public_params,
+        string manifest_version
+    );
+
+    [Throws=OoniError]
+    SubmitResult userauth_submit(
+        string url,
+        string credential_b64,
+        string public_params,
+        string probe_cc,
+        string probe_asn,
+        string manifest_version
+    );
+};
+
+[Error]
+enum OoniError {
+    "NullOrInvalidInput",
+    "Base64DecodeError",
+    "BincodeDecodeError",
+    "HttpClientError",
+    "CryptoError",
+    "SerializationError",
+    "InvalidCredential",
+    "Other",
+};
+
+dictionary KeyValue {
+    string key;
+    string value;
+};
+
+dictionary HttpResponse {
+    i32 status_code;
+    string version;
+    sequence<sequence<string>> headers_list_text;
+    sequence<sequence<string>> headers_list_b64_bytes;
+    string? body_text;
+    string? body_b64_bytes;
+};
+
+dictionary RegistrationResult {
+    string credential;
+    i32    emission_day;
+};
+
+dictionary SubmitResult {
+    string?  measurement_uid;
+    boolean  is_verified;
+    string   updated_credential;
+};
