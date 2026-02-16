@@ -4,6 +4,8 @@ ANDROID_MODULE := android/ooniprobe
 JNI_DIR := $(ANDROID_MODULE)/src/main/jniLibs
 BINDINGS_DIR := $(ANDROID_MODULE)/src/main/java/org/ooni/ooniprobe
 
+NDK_HOME ?= $(ANDROID_NDK_HOME)
+
 ANDROID_TARGETS := \
 	aarch64-linux-android \
 	armv7-linux-androideabi \
@@ -31,30 +33,15 @@ android-targets:
 		rustup target add $$t; \
 	done
 
-
 .PHONY: android-so
 android-so: android-targets
-	@for t in $(ANDROID_TARGETS); do \
-		cargo build -p $(CRATE) --target $$t --release; \
-	done
-
-	rm -rf $(JNI_DIR)
-	mkdir -p $(JNI_DIR)/arm64-v8a
-	mkdir -p $(JNI_DIR)/armeabi-v7a
-	mkdir -p $(JNI_DIR)/x86_64
-	mkdir -p ${JNI_DIR}/i686
-
-	cp target/aarch64-linux-android/release/libooniprobe_ffi.so \
-		$(JNI_DIR)/arm64-v8a/
-
-	cp target/armv7-linux-androideabi/release/libooniprobe_ffi.so \
-		$(JNI_DIR)/armeabi-v7a/
-
-	cp target/x86_64-linux-android/release/libooniprobe_ffi.so \
-		$(JNI_DIR)/x86_64/
-
-	cp target/i686-linux-android/release/libooniprobe_ffi.so \
-		$(JNI_DIR)/i686/	
+	ANDROID_NDK_HOME=$(NDK_HOME) cargo ndk \
+		-t armeabi-v7a \
+		-t arm64-v8a \
+		-t x86 \
+		-t x86_64 \
+		-o $(JNI_DIR) \
+		build -p $(CRATE) --release
 
 .PHONY: bindings
 bindings:
@@ -70,7 +57,3 @@ aar:
 
 .PHONY: android
 android: android-so bindings aar
-
-.PHONY: publish
-publish:
-	cd android && ./gradlew :ooniprobe:publish

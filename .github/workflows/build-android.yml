@@ -25,6 +25,13 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r27d
+          add-to-path: true
+
       - name: Cache Cargo
         uses: actions/cache@v4
         with:
@@ -41,11 +48,15 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
-      - name: Install uniffi-bindgen
-        run: cargo install uniffi_bindgen --locked || true
+      - name: Install cargo-ndk and uniffi-bindgen
+        run: |
+          cargo install cargo-ndk --locked
+          cargo install uniffi_bindgen --locked || true
 
-      - name: Build for android
+      - name: Build for Android
         run: make android
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
       - name: Upload AAR Artifact
         uses: actions/upload-artifact@v6
