@@ -4,7 +4,7 @@ version = { workspace = true }
 edition = { workspace = true }
 
 [lib]
-crate_type = ["cdylib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 jni = { workspace = true }
