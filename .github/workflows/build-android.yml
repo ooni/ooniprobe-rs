@@ -48,10 +48,9 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
-      - name: Install cargo-ndk and uniffi-bindgen
+      - name: Install cargo-ndk
         run: |
           cargo install cargo-ndk --locked
-          cargo install uniffi_bindgen --locked || true
 
       - name: Build for Android
         run: make android
