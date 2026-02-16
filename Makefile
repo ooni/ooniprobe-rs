@@ -42,6 +42,7 @@ android-so: android-targets
 	mkdir -p $(JNI_DIR)/arm64-v8a
 	mkdir -p $(JNI_DIR)/armeabi-v7a
 	mkdir -p $(JNI_DIR)/x86_64
+	mkdir -p ${JNI_DIR}/i686
 
 	cp target/aarch64-linux-android/release/libooniprobe_ffi.so \
 		$(JNI_DIR)/arm64-v8a/
@@ -51,6 +52,9 @@ android-so: android-targets
 
 	cp target/x86_64-linux-android/release/libooniprobe_ffi.so \
 		$(JNI_DIR)/x86_64/
+
+	cp target/i686-linux-android/release/libooniprobe_ffi.so \
+		$(JNI_DIR)/i686/	
 
 .PHONY: bindings
 bindings:
