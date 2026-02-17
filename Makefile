@@ -84,10 +84,12 @@ ios-libs: ios-targets
 
 	SDKROOT=$(IPHONESIMULATOR_SDK) \
 	IPHONEOS_DEPLOYMENT_TARGET=$(MIN_IOS_VERSION) \
+	BINDGEN_EXTRA_CLANG_ARGS="-target arm64-apple-ios$(MIN_IOS_VERSION)-simulator" \
 	cargo build -p $(CRATE) --target aarch64-apple-ios-sim --release
 
 	SDKROOT=$(IPHONESIMULATOR_SDK) \
 	IPHONEOS_DEPLOYMENT_TARGET=$(MIN_IOS_VERSION) \
+	BINDGEN_EXTRA_CLANG_ARGS="-target x86_64-apple-ios$(MIN_IOS_VERSION)-simulator" \
 	cargo build -p $(CRATE) --target x86_64-apple-ios --release
 
 .PHONY: ios-universal-sim
