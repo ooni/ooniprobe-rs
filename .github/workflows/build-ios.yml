@@ -1,0 +1,32 @@
+name: Build iOS XCFramework
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ feat/ooniprobe-ffi-kotlin ]
+
+jobs:
+  ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build XCFramework
+        run: make ios
+
+      - name: Upload XCFramework Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ooniProbe.xcframework
+          path: ios/ooniProbe.xcframework
+
+      - name: Upload Swift Bindings
+        uses: actions/upload-artifact@v6
+        with:
+          name: SwiftBindings
+          path: ios/Sources/OoniProbe

@@ -12,6 +12,14 @@ ANDROID_TARGETS := \
 	i686-linux-android \
 	x86_64-linux-android
 
+XCFRAMEWORK_DIR := ios/ooniProbe.xcframework
+SWIFT_DIR := ios/Sources/OoniProbe
+
+IOS_TARGETS := \
+	aarch64-apple-ios \
+	aarch64-apple-ios-sim \
+	x86_64-apple-ios
+
 .PHONY: help
 help:
 	@echo "Available targets:"
@@ -19,9 +27,9 @@ help:
 	@echo "  make android-so     Build Android .so only"
 	@echo "  make bindings       Generate Kotlin bindings"
 	@echo "  make aar            Build Android AAR"
-	@echo "  make clean          Clean everything"
+	@echo "  make android-clean  Clean android builds"
 
-.PHONY: clean
+.PHONY: clean-android
 clean:
 	cargo clean -p $(CRATE)
 	rm -rf $(JNI_DIR)
@@ -57,3 +65,41 @@ aar:
 
 .PHONY: android
 android: android-so bindings aar
+
+.PHONY: ios-targets
+ios-targets:
+	@for t in $(IOS_TARGETS); do \
+		rustup target add $$t; \
+	done
+
+.PHONY: ios-libs
+ios-libs: ios-targets
+	cargo build -p $(CRATE) --target aarch64-apple-ios --release
+	cargo build -p $(CRATE) --target aarch64-apple-ios-sim --release
+	cargo build -p $(CRATE) --target x86_64-apple-ios --release
+
+.PHONY: ios-universal-sim
+ios-universal-sim: ios-libs
+	lipo -create \
+		target/aarch64-apple-ios-sim/release/libooniprobe_ffi.a \
+		target/x86_64-apple-ios/release/libooniprobe_ffi.a \
+		-output target/ios-simulator-universal/release/libooniprobe_ffi.a
+
+.PHONY: ios-bindings
+ios-bindings:
+	@mkdir -p $(SWIFT_DIR)
+	cargo run -p uniffi-bindgen -- \
+		generate $(UDL) \
+		--language swift \
+		--out-dir $(SWIFT_DIR)
+
+.PHONY: ios-xcframework
+ios-xcframework: ios-universal-sim ios-bindings
+	@rm -rf $(XCFRAMEWORK_DIR)
+	xcodebuild -create-xcframework \
+		-library target/aarch64-apple-ios/release/libooniprobe_ffi.a -headers $(SWIFT_DIR) \
+		-library target/ios-simulator-universal/release/libooniprobe_ffi.a -headers $(SWIFT_DIR) \
+		-output $(XCFRAMEWORK_DIR)
+
+.PHONY: ios
+ios: ios-xcframework
