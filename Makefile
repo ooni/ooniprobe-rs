@@ -94,6 +94,7 @@ ios-libs: ios-targets
 
 .PHONY: ios-universal-sim
 ios-universal-sim: ios-libs
+	@mkdir -p target/ios-simulator-universal/release
 	lipo -create \
 		target/aarch64-apple-ios-sim/release/libooniprobe_ffi.a \
 		target/x86_64-apple-ios/release/libooniprobe_ffi.a \
