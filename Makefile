@@ -15,6 +15,9 @@ ANDROID_TARGETS := \
 XCFRAMEWORK_DIR := ios/ooniProbe.xcframework
 SWIFT_DIR := ios/Sources/OoniProbe
 
+IPHONEOS_SDK = $(shell xcrun --sdk iphoneos --show-sdk-path)
+IPHONESIMULATOR_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path)
+
 IOS_TARGETS := \
 	aarch64-apple-ios \
 	aarch64-apple-ios-sim \
@@ -74,9 +77,9 @@ ios-targets:
 
 .PHONY: ios-libs
 ios-libs: ios-targets
-	cargo build -p $(CRATE) --target aarch64-apple-ios --release
-	cargo build -p $(CRATE) --target aarch64-apple-ios-sim --release
-	cargo build -p $(CRATE) --target x86_64-apple-ios --release
+	SDKROOT=$(IPHONEOS_SDK) cargo build -p $(CRATE) --target aarch64-apple-ios --release
+	SDKROOT=$(IPHONESIMULATOR_SDK) cargo build -p $(CRATE) --target aarch64-apple-ios-sim --release
+	SDKROOT=$(IPHONESIMULATOR_SDK) cargo build -p $(CRATE) --target x86_64-apple-ios --release
 
 .PHONY: ios-universal-sim
 ios-universal-sim: ios-libs
