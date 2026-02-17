@@ -111,6 +111,8 @@ ios-bindings:
 .PHONY: ios-xcframework
 ios-xcframework: ios-universal-sim ios-bindings
 	@rm -rf $(XCFRAMEWORK_DIR)
+	cp $(SWIFT_DIR)/ooniprobeFFI.modulemap $(SWIFT_DIR)/module.modulemap
+	
 	xcodebuild -create-xcframework \
 		-library target/aarch64-apple-ios/release/libooniprobe_ffi.a -headers $(SWIFT_DIR) \
 		-library target/ios-simulator-universal/release/libooniprobe_ffi.a -headers $(SWIFT_DIR) \

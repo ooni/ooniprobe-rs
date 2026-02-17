@@ -28,5 +28,5 @@ jobs:
       - name: Upload Swift Bindings
         uses: actions/upload-artifact@v6
         with:
-          name: SwiftBindings
-          path: ios/Sources/OoniProbe
+          name: ooniprobe-swift
+          path: ios/Sources/OoniProbe/*.swift
