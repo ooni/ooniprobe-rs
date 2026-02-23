@@ -11,8 +11,8 @@ pub enum OoniError {
     #[error("Base64 decode error: {0}")]
     Base64DecodeError(String),
 
-    #[error("Bincode decode error: {0}")]
-    BincodeDecodeError(String),
+    #[error("Binary decode error: {0}")]
+    BinaryDecodeError(String),
 
     #[error("HTTP client error: {0}")]
     HttpClientError(String),
@@ -38,7 +38,7 @@ impl From<base64::DecodeError> for OoniError {
 
 impl From<postcard::Error> for OoniError {
     fn from(e: postcard::Error) -> Self {
-        OoniError::BincodeDecodeError(e.to_string())
+        OoniError::BinaryDecodeError(e.to_string())
     }
 }
 

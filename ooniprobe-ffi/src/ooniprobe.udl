@@ -43,7 +43,7 @@ namespace ooniprobe {
 enum OoniError {
     "NullOrInvalidInput",
     "Base64DecodeError",
-    "BincodeDecodeError",
+    "BinaryDecodeError",
     "HttpClientError",
     "CryptoError",
     "SerializationError",
