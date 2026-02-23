@@ -28,6 +28,6 @@ android {
 }
 
 dependencies {
-    implementation("net.java.dev.jna:jna:5.14.0@aar")
+    api("net.java.dev.jna:jna:5.14.0@aar")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
 }
