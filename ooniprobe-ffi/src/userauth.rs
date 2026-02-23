@@ -109,7 +109,7 @@ pub fn userauth_register(
     // prepare registration request
     let mut rng = rand::thread_rng();
     let (reg_request, reg_state) = user_state.request(&mut rng)?;
-    let raw_bytes = reg_request.as_bytes();
+    let raw_bytes = postcard::to_allocvec(&reg_request)?;
     let request_payload = b64_encode(&raw_bytes);
 
     // prepare payload for POST to register endpoint
@@ -212,11 +212,12 @@ pub fn userauth_submit(
 
     // prepare payload for POST to submit endpoint
     let measurement_content: serde_json::Value = serde_json::from_str(&content)?;
+    let request_bytes = postcard::to_allocvec(&submit_request)?;
     let submit_payload = SubmitMeasurementPayload {
         format: "json".to_string(),
         content: measurement_content,
         nym: b64_encode(&probe_id),
-        zkp_request: b64_encode(&submit_request.as_bytes()),
+        zkp_request: b64_encode(&request_bytes),
         probe_age_range: (age_range.start, age_range.end),
         probe_msm_range: (measurement_count_range.start, measurement_count_range.end),
         manifest_version,
@@ -285,8 +286,8 @@ mod tests {
     fn userauth_register_works_with_public_params() {
         let url = format!("{BASE_URL}/api/v1/sign_credential");
 
-        let public_params = "ASAAAAAAAAAApNRh7fk+riQoD24/O1deyv96zzUKrPl/iVfFArlNGjABIAAAAAAAAADcq4aiJe0vkFuO1YnByaMEiB8ZA/rqf1d4O/SzFec8bAMAAAAAAAAAIAAAAAAAAAD+Z9JjHXAYvJdxloiGdIaqUQF208Oq7YTdvRYDrZY8SyAAAAAAAAAAUGiViBIvG4Xd7Cv29tLNuC/y0lTINIw63Je/Zm0XXGQgAAAAAAAAAFbDFU/rX+kMZEwVlx4ZeaqYLTbYO30Kz37W8DNx2Cw3";
-        let manifest_version = "qNJGXyrYz5uz0xGtcQUEH6Lf1cY.USnY";
+        let public_params = "ASAQLXA3nuXAE3EqWdGPCOhdnuHUQvzveiNbk0AxuLOnHwEgPDK8zi0QEp5itXAuRHm4EI/niFnDlJecii1xrisjORgDIKYlBK2/NgBDBuPkUq7VscpReP2FXr3xYGzA5DrffE9YIPTUjn1pq0qhMoD/oJfJwovgkv5otvOCBsxLGTZqzIcvICRQeuUNqnxEfI6BSCLUqa3+++AjEqqctoKggsqMwYAZ";
+        let manifest_version = "3KbgvoAmwWRXS8WggPr8glrYw9t4NZxU";
 
         let result =
             userauth_register(url, public_params.to_string(), manifest_version.to_string())
@@ -310,8 +311,8 @@ mod tests {
 
     #[test]
     fn userauth_submit_works_with_mock_measurement() {
-        let public_params = "ASAAAAAAAAAApNRh7fk+riQoD24/O1deyv96zzUKrPl/iVfFArlNGjABIAAAAAAAAADcq4aiJe0vkFuO1YnByaMEiB8ZA/rqf1d4O/SzFec8bAMAAAAAAAAAIAAAAAAAAAD+Z9JjHXAYvJdxloiGdIaqUQF208Oq7YTdvRYDrZY8SyAAAAAAAAAAUGiViBIvG4Xd7Cv29tLNuC/y0lTINIw63Je/Zm0XXGQgAAAAAAAAAFbDFU/rX+kMZEwVlx4ZeaqYLTbYO30Kz37W8DNx2Cw3".to_string();
-        let manifest_version = "qNJGXyrYz5uz0xGtcQUEH6Lf1cY.USnY".to_string();
+        let public_params = "ASAQLXA3nuXAE3EqWdGPCOhdnuHUQvzveiNbk0AxuLOnHwEgPDK8zi0QEp5itXAuRHm4EI/niFnDlJecii1xrisjORgDIKYlBK2/NgBDBuPkUq7VscpReP2FXr3xYGzA5DrffE9YIPTUjn1pq0qhMoD/oJfJwovgkv5otvOCBsxLGTZqzIcvICRQeuUNqnxEfI6BSCLUqa3+++AjEqqctoKggsqMwYAZ".to_string();
+        let manifest_version = "3KbgvoAmwWRXS8WggPr8glrYw9t4NZxU".to_string();
 
         let open_url = format!("{BASE_URL}/report");
         let report_payload = serde_json::json!({
@@ -361,6 +362,7 @@ mod tests {
 
         let measurement_content = serde_json::json!({
             "id": "bdd20d7a-bba5-40dd-a111-9863d7908572",
+            "probe_id": probe_id.probe_id,
             "probe_asn": probe_asn,
             "probe_cc": probe_cc,
             "software_name": "ooniprobe-engine",
