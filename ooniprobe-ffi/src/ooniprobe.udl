@@ -14,14 +14,14 @@ namespace ooniprobe {
     );
 
     [Throws=OoniError]
-    RegistrationResult userauth_register(
+    CredentialResult userauth_register(
         string url,
         string public_params,
         string manifest_version
     );
 
     [Throws=OoniError]
-    SubmitResult userauth_submit(
+    CredentialResult userauth_submit(
         string url,
         string credential,
         string public_params,
@@ -65,12 +65,7 @@ dictionary HttpResponse {
     string? body_b64_bytes;
 };
 
-dictionary RegistrationResult {
-    string? credential;
-    HttpResponse response;
-};
-
-dictionary SubmitResult {
+dictionary CredentialResult {
     HttpResponse response;
     string?   credential;
 };

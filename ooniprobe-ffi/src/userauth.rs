@@ -19,15 +19,9 @@ pub struct ProbeIDResult {
 }
 
 #[derive(Debug)]
-pub struct RegistrationResult {
+pub struct CredentialResult {
     pub credential: Option<String>,
     pub response: HttpResponse,
-}
-
-#[derive(Debug)]
-pub struct SubmitResult {
-    pub response: HttpResponse,
-    pub credential: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -107,7 +101,7 @@ pub fn userauth_register(
     url: String,
     public_params: String,
     manifest_version: String,
-) -> Result<RegistrationResult, OoniError> {
+) -> Result<CredentialResult, OoniError> {
     // initialize user state with public params
     let pp = decode_public_params(&public_params)?;
     let mut user_state = ooniauth_core::UserState::new(pp);
@@ -136,7 +130,7 @@ pub fn userauth_register(
 
     // return early in case of failure
     if response.status_code < 200 || response.status_code >= 300 {
-        return Ok(RegistrationResult {
+        return Ok(CredentialResult {
             credential: None,
             response: response,
         });
@@ -165,7 +159,7 @@ pub fn userauth_register(
     // serialize the full credential object so the caller can store it
     let cred_bytes = postcard::to_allocvec(credential)?;
 
-    Ok(RegistrationResult {
+    Ok(CredentialResult {
         credential: Some(b64_encode(&cred_bytes)),
         response,
     })
@@ -179,7 +173,7 @@ pub fn userauth_submit(
     probe_cc: String,
     probe_asn: String,
     manifest_version: String,
-) -> Result<SubmitResult, OoniError> {
+) -> Result<CredentialResult, OoniError> {
     // initialize the user state with public params
     let pp = decode_public_params(&public_params)?;
     let mut user_state = ooniauth_core::UserState::new(pp);
@@ -241,7 +235,7 @@ pub fn userauth_submit(
 
     // return early in case of failure
     if response.status_code < 200 || response.status_code >= 300 {
-        return Ok(SubmitResult {
+        return Ok(CredentialResult {
             credential: None,
             response: response,
         });
@@ -273,7 +267,7 @@ pub fn userauth_submit(
     // serialize the full credential object so the caller can store it
     let cred_bytes = postcard::to_allocvec(credential)?;
 
-    Ok(SubmitResult {
+    Ok(CredentialResult {
         credential: Some(b64_encode(&cred_bytes)),
         response,
     })
