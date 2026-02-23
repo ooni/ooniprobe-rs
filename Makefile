@@ -96,9 +96,9 @@ ios-libs: ios-targets
 ios-universal-sim: ios-libs
 	@mkdir -p target/ios-simulator-universal/release
 	lipo -create \
-		target/aarch64-apple-ios-sim/release/libooniprobe_ffi.a \
-		target/x86_64-apple-ios/release/libooniprobe_ffi.a \
-		-output target/ios-simulator-universal/release/libooniprobe_ffi.a
+		target/aarch64-apple-ios-sim/release/libuniffi_ooniprobe.a \
+		target/x86_64-apple-ios/release/libuniffi_ooniprobe.a \
+		-output target/ios-simulator-universal/release/libuniffi_ooniprobe.a
 
 .PHONY: ios-bindings
 ios-bindings:
@@ -114,8 +114,8 @@ ios-xcframework: ios-universal-sim ios-bindings
 	cp $(SWIFT_DIR)/ooniprobeFFI.modulemap $(SWIFT_DIR)/module.modulemap
 	
 	xcodebuild -create-xcframework \
-		-library target/aarch64-apple-ios/release/libooniprobe_ffi.a -headers $(SWIFT_DIR) \
-		-library target/ios-simulator-universal/release/libooniprobe_ffi.a -headers $(SWIFT_DIR) \
+		-library target/aarch64-apple-ios/release/libuniffi_ooniprobe.a -headers $(SWIFT_DIR) \
+		-library target/ios-simulator-universal/release/libuniffi_ooniprobe.a -headers $(SWIFT_DIR) \
 		-output $(XCFRAMEWORK_DIR)
 
 .PHONY: ios
