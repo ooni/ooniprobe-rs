@@ -24,14 +24,9 @@ IOS_TARGETS := \
 	aarch64-apple-ios-sim \
 	x86_64-apple-ios
 
-.PHONY: help
-help:
-	@echo "Available targets:"
-	@echo "  make android        Build Rust + Kotlin + AAR"
-	@echo "  make android-so     Build Android .so only"
-	@echo "  make bindings       Generate Kotlin bindings"
-	@echo "  make aar            Build Android AAR"
-	@echo "  make android-clean  Clean android builds"
+DESKTOP_DIR := desktop
+DESKTOP_RESOURCES := $(DESKTOP_DIR)/src/main/resources
+DESKTOP_BINDINGS_DIR := $(DESKTOP_DIR)/src/main/kotlin
 
 .PHONY: clean-android
 clean:
@@ -120,3 +115,43 @@ ios-xcframework: ios-universal-sim ios-bindings
 
 .PHONY: ios
 ios: ios-xcframework
+
+.PHONY: clean-desktop
+clean:
+	cargo clean -p $(CRATE)
+	rm -rf $(DESKTOP_RESOURCES)
+	rm -rf $(DESKTOP_BINDINGS_DIR)
+
+.PHONY: desktop-bindings
+desktop-bindings:
+	@mkdir -p $(DESKTOP_BINDINGS_DIR)
+	cargo run -p uniffi-bindgen -- \
+		generate $(UDL) \
+		--language kotlin \
+		--out-dir $(DESKTOP_BINDINGS_DIR)
+
+.PHONY: desktop-linux
+desktop-linux:
+	cargo build -p $(CRATE) --release
+	@mkdir -p $(DESKTOP_RESOURCES)/linux-x86-64
+	cp target/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-x86-64/
+	$(MAKE) desktop-jar OS_NAME=linux
+
+.PHONY: desktop-macos
+desktop-macos:
+	cargo build -p $(CRATE) --release
+	$(eval ARCH := $(shell uname -m | sed 's/arm64/aarch64/'))
+	@mkdir -p $(DESKTOP_RESOURCES)/darwin-$(ARCH)
+	cp target/release/libuniffi_ooniprobe.dylib $(DESKTOP_RESOURCES)/darwin-$(ARCH)/
+	$(MAKE) desktop-jar OS_NAME=macos
+
+.PHONY: desktop-windows
+desktop-windows:
+	cargo build -p $(CRATE) --release
+	@mkdir -p $(DESKTOP_RESOURCES)/win32-x86-64
+	cp target/release/uniffi_ooniprobe.dll $(DESKTOP_RESOURCES)/win32-x86-64/
+	$(MAKE) desktop-jar OS_NAME=windows
+
+.PHONY: desktop-jar
+desktop-jar: desktop-bindings
+	cd $(DESKTOP_DIR) && ./gradlew jar -PosName=$(OS_NAME)
