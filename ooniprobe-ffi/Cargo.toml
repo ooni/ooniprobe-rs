@@ -10,6 +10,7 @@ crate-type = ["cdylib", "staticlib"]
 uniffi = { version = "0.28", features = ["tokio"] }
 ooniauth-core = { git = "https://github.com/ooni/userauth", rev = "9a0b827ba2f41b7a9fb456329e1fc5e97d2086b2" }
 cmz = {workspace = true}
+postcard = { version = "1", features = ["alloc"] }
 sha2 = "0.10.9"
 ooniprobe-services = { path = "../ooniprobe-services" }
 hex = {workspace = true}

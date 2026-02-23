@@ -36,8 +36,8 @@ impl From<base64::DecodeError> for OoniError {
     }
 }
 
-impl From<bincode::Error> for OoniError {
-    fn from(e: bincode::Error) -> Self {
+impl From<postcard::Error> for OoniError {
+    fn from(e: postcard::Error) -> Self {
         OoniError::BincodeDecodeError(e.to_string())
     }
 }
