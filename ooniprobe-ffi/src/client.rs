@@ -1,8 +1,8 @@
 use crate::errors::OoniError;
 
-use serde::{Deserialize, Serialize};
-use rquest::header::{HeaderMap, HeaderName, HeaderValue};
 use ooniprobe_services::client::{Client, Response};
+use rquest::header::{HeaderMap, HeaderName, HeaderValue};
+use serde::{Deserialize, Serialize};
 
 // Must match the UDL dictionary definitions.
 
@@ -22,35 +22,38 @@ pub struct HttpResponse {
     pub body_b64_bytes: Option<String>,
 }
 
+impl From<Response> for HttpResponse {
+    fn from(resp: Response) -> Self {
+        Self {
+            status_code: resp.status_code as i32,
+            version: resp.version,
+            headers_list_text: resp
+                .headers_list_text
+                .into_iter()
+                .map(|(k, v)| vec![k, v])
+                .collect(),
+            headers_list_b64_bytes: resp
+                .headers_list_b64_bytes
+                .into_iter()
+                .map(|(k, v)| vec![k, v])
+                .collect(),
+            body_text: resp.body_text,
+            body_b64_bytes: resp.body_b64_bytes,
+        }
+    }
+}
+
 pub fn build_client() -> Result<Client, OoniError> {
     Client::builder()
         .build()
         .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))
 }
 
-fn convert_response(resp: Response) -> HttpResponse {
-    HttpResponse {
-        status_code: resp.status_code as i32,
-        version: resp.version,
-
-        headers_list_text: resp
-            .headers_list_text
-            .into_iter()
-            .map(|(k, v)| vec![k, v])
-            .collect(),
-
-        headers_list_b64_bytes: resp
-            .headers_list_b64_bytes
-            .into_iter()
-            .map(|(k, v)| vec![k, v])
-            .collect(),
-
-        body_text: resp.body_text,
-        body_b64_bytes: resp.body_b64_bytes,
-    }
-}
-
-pub fn client_get(url: String, headers: Vec<KeyValue>, query: Vec<KeyValue>) -> Result<HttpResponse, OoniError> {
+pub fn client_get(
+    url: String,
+    headers: Vec<KeyValue>,
+    query: Vec<KeyValue>,
+) -> Result<HttpResponse, OoniError> {
     let client = build_client()?;
 
     let mut header_map = HeaderMap::new();
@@ -60,24 +63,25 @@ pub fn client_get(url: String, headers: Vec<KeyValue>, query: Vec<KeyValue>) -> 
 
         let value = HeaderValue::from_str(&kv.value)
             .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
-        
+
         header_map.insert(name, value);
     }
 
     let request = client
         .request("GET", &url)
         .map(|b| b.headers(header_map).query(&query))
-        .and_then(|b| b.build().map_err(Into::into))
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
+        .and_then(|b| b.build().map_err(Into::into))?;
 
-    let response = client
-        .execute(request)
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
+    let response = client.execute(request).map(Into::into)?;
 
-    Ok(convert_response(response))
+    Ok(response)
 }
 
-pub fn client_post(url: String, headers: Vec<KeyValue>, payload: String) -> Result<HttpResponse, OoniError> {
+pub fn client_post(
+    url: String,
+    headers: Vec<KeyValue>,
+    payload: String,
+) -> Result<HttpResponse, OoniError> {
     let client = build_client()?;
 
     let mut header_map = HeaderMap::new();
@@ -87,21 +91,18 @@ pub fn client_post(url: String, headers: Vec<KeyValue>, payload: String) -> Resu
 
         let value = HeaderValue::from_str(&kv.value)
             .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
-        
+
         header_map.insert(name, value);
     }
 
     let request = client
         .request("POST", &url)
         .map(|b| b.headers(header_map).body(payload))
-        .and_then(|b| b.build().map_err(Into::into))
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
+        .and_then(|b| b.build().map_err(Into::into))?;
 
-    let response = client
-        .execute(request)
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
+    let response = client.execute(request).map(Into::into)?;
 
-    Ok(convert_response(response))
+    Ok(response)
 }
 
 #[cfg(test)]
@@ -112,12 +113,8 @@ mod tests {
 
     #[test]
     fn get_manifest_returns_manifest_version_and_public_params() {
-        let url = format!("https://ooniprobe.dev.ooni.io/api/v1/manifest");
-        let resp = client_get(
-            url, 
-            vec![], 
-            vec![]
-        ).expect("GET manifest should succeed");
+        let url = format!("{BASE_URL}/api/v1/manifest");
+        let resp = client_get(url, vec![], vec![]).expect("GET manifest should succeed");
 
         assert_eq!(resp.status_code, 200, "incorrect status_code: {:?}", resp);
 
@@ -186,6 +183,51 @@ mod tests {
         assert!(
             parsed["tests"]["web_connectivity"]["urls"].is_array(),
             "urls missing: {}",
+            body_text
+        );
+    }
+
+    #[test]
+    fn post_report_returns_report_id() {
+        let payload = serde_json::json!({
+            "data_format_version": "0.2.0",
+            "format": "json",
+            "probe_asn": "AS117",
+            "probe_cc": "IT",
+            "software_name": "ooniprobe-engine",
+            "software_version": "0.1.0",
+            "test_name": "dummy",
+            "test_start_time": "2019-10-28 12:51:06",
+            "test_version": "0.1.0"
+        })
+        .to_string();
+
+        let url = format!("{BASE_URL}/report");
+        let resp = client_post(
+            url,
+            vec![KeyValue {
+                key: "Content-Type".to_string(),
+                value: "application/json".to_string(),
+            }],
+            payload,
+        )
+        .expect("POST check-in should succeed");
+
+        assert_eq!(resp.status_code, 200, "incorrect status_code: {:?}", resp);
+
+        let body_text = resp.body_text.as_ref().expect("body_text missing");
+
+        let parsed: serde_json::Value =
+            serde_json::from_str(body_text).expect("response body should be valid JSON");
+
+        assert!(
+            parsed.get("report_id").is_some(),
+            "report_id field missing: {}",
+            body_text
+        );
+        assert!(
+            parsed.get("backend_version").is_some(),
+            "backend_version missing: {}",
             body_text
         );
     }

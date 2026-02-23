@@ -1,12 +1,12 @@
-use curve25519_dalek::Scalar;
 use base64::prelude::BASE64_STANDARD;
+use base64::Engine;
 use bincode;
+use curve25519_dalek::Scalar;
 use rand;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::ptr;
-use base64::Engine;
 
 use ooniauth_core::PublicParameters;
 use ooniprobe_services::client::Client;
@@ -30,8 +30,7 @@ impl ClientResponse {
 
     fn error<E: std::fmt::Debug>(e: E) -> Self {
         let msg = format!("{:?}", e);
-        let cstr = CString::new(msg)
-            .unwrap_or_else(|_| CString::new("invalid error").unwrap());
+        let cstr = CString::new(msg).unwrap_or_else(|_| CString::new("invalid error").unwrap());
 
         Self {
             json: ptr::null_mut(),
@@ -69,11 +68,8 @@ fn today() -> u32 {
 }
 
 /// Decode base64-encoded public parameters
-fn decode_public_params(
-    public_params: *const c_char,
-) -> Result<PublicParameters, String> {
-    let s = c_char_to_string(public_params)
-        .ok_or("public_params is null or invalid UTF-8")?;
+fn decode_public_params(public_params: *const c_char) -> Result<PublicParameters, String> {
+    let s = c_char_to_string(public_params).ok_or("public_params is null or invalid UTF-8")?;
 
     let bytes = b64_decode(&s).map_err(|e| format!("base64 decode failed: {:?}", e))?;
 
@@ -87,9 +83,8 @@ fn build_client() -> Result<Client, String> {
         .map_err(|e| format!("failed to build client: {:?}", e))
 }
 
-
 /// Free memory allocated by ClientResponse
-/// 
+///
 /// # Safety
 /// This function must be called exactly once for each ClientResponse
 /// returned by other FFI functions to avoid memory leaks.
@@ -103,9 +98,8 @@ pub extern "C" fn client_response_free(response: ClientResponse) {
     }
 }
 
-
 /// Perform HTTP GET request
-/// 
+///
 /// # Safety
 /// - `url` must be a valid null-terminated C string
 /// - Caller must call `client_response_free` on the returned value
@@ -135,9 +129,8 @@ fn client_get_impl(url: *const c_char) -> Result<String, String> {
         .map_err(|e| format!("failed to read response body: {:?}", e))
 }
 
-
 /// Perform HTTP POST request
-/// 
+///
 /// # Safety
 /// - `url` and `payload` must be valid null-terminated C strings
 /// - Caller must call `client_response_free` on the returned value
@@ -181,9 +174,8 @@ struct RegistrationResponse {
     emission_day: i16,
 }
 
-
 /// Register a user and obtain a credential
-/// 
+///
 /// # Safety
 /// - All parameters must be valid null-terminated C strings
 /// - Caller must call `client_response_free` on the returned value
@@ -206,8 +198,8 @@ fn userauth_register_impl(
 ) -> Result<String, String> {
     // Parse and validate inputs
     let url = c_char_to_string(url).ok_or("url is null or invalid UTF-8")?;
-    let manifest_version = c_char_to_string(manifest_version)
-        .ok_or("manifest_version is null or invalid UTF-8")?;
+    let manifest_version =
+        c_char_to_string(manifest_version).ok_or("manifest_version is null or invalid UTF-8")?;
     let pp = decode_public_params(public_params)?;
 
     // Create registration request
@@ -244,15 +236,18 @@ fn userauth_register_impl(
         .map_err(|e| format!("failed to read response body: {:?}", e))?;
 
     // Parse response
-    let resp: RegistrationResponse = serde_json::from_str(&body)
-        .map_err(|e| format!("invalid JSON response: {:?}", e))?;
+    let resp: RegistrationResponse =
+        serde_json::from_str(&body).map_err(|e| format!("invalid JSON response: {:?}", e))?;
 
     let reply_bincode_bytes = b64_decode(&resp.credential_sign_response)
         .map_err(|e| format!("invalid base64 in response: {:?}", e))?;
 
     let reply: ooniauth_core::registration::open_registration::Reply =
         bincode::deserialize(&reply_bincode_bytes).map_err(|e| {
-            format!("failed to deserialize registration reply (bincode): {:?}", e)
+            format!(
+                "failed to deserialize registration reply (bincode): {:?}",
+                e
+            )
         })?;
 
     // Handle registration response
@@ -273,7 +268,6 @@ fn userauth_register_impl(
 
     Ok(out_json)
 }
-
 
 #[derive(Serialize, Deserialize)]
 struct SubmitContent {
@@ -299,9 +293,8 @@ struct SubmitMeasurementResponse {
     submit_response: String,
 }
 
-
 /// Submit user credentials with measurement data
-/// 
+///
 /// # Safety
 /// - All parameters must be valid null-terminated C strings
 /// - `credential_b64` must be a valid base64-encoded credential
@@ -316,7 +309,14 @@ pub extern "C" fn userauth_submit(
     probe_asn: *const c_char,
     manifest_version: *const c_char,
 ) -> ClientResponse {
-    match userauth_submit_impl(url, credential_b64, public_params, probe_cc, probe_asn, manifest_version) {
+    match userauth_submit_impl(
+        url,
+        credential_b64,
+        public_params,
+        probe_cc,
+        probe_asn,
+        manifest_version,
+    ) {
         Ok(json) => ClientResponse::success(json),
         Err(e) => ClientResponse::error(e),
     }
@@ -334,8 +334,10 @@ fn userauth_submit_impl(
     let url_str = c_char_to_string(url).ok_or("url is null or invalid UTF-8")?;
     let probe_cc_str = c_char_to_string(probe_cc).ok_or("probe_cc is null or invalid UTF-8")?;
     let probe_asn_str = c_char_to_string(probe_asn).ok_or("probe_asn is null or invalid UTF-8")?;
-    let credential_b64_str = c_char_to_string(credential_b64).ok_or("credential is null or invalid UTF-8")?;
-    let manifest_version_str = c_char_to_string(manifest_version).ok_or("manifest_version is null or invalid UTF-8")?;
+    let credential_b64_str =
+        c_char_to_string(credential_b64).ok_or("credential is null or invalid UTF-8")?;
+    let manifest_version_str =
+        c_char_to_string(manifest_version).ok_or("manifest_version is null or invalid UTF-8")?;
 
     let pp = decode_public_params(public_params)
         .map_err(|e| format!("failed to decode public params: {:?}", e))?;
@@ -355,15 +357,15 @@ fn userauth_submit_impl(
     // Create submit request
     let mut rng = rand::thread_rng();
     let ((submit_request, submit_state), nym) = ooniauth_core::user_submit::submit_request(
-            &credential,
-            &pp,
-            &mut rng,
-            probe_cc_str.clone(),
-            probe_asn_str.clone(),
-            age_range.clone(),
-            measurement_count_range.clone(),
-        )
-        .map_err(|e| format!("failed to create submit request: {:?}", e))?;
+        &credential,
+        &pp,
+        &mut rng,
+        probe_cc_str.clone(),
+        probe_asn_str.clone(),
+        age_range.clone(),
+        measurement_count_range.clone(),
+    )
+    .map_err(|e| format!("failed to create submit request: {:?}", e))?;
 
     let submit_payload = SubmitMeasurementPayload {
         format: "json".to_string(),
@@ -396,22 +398,21 @@ fn userauth_submit_impl(
     let body = response
         .to_json_str()
         .map_err(|e| format!("failed to read response body: {:?}", e))?;
-    
+
     // Parse response
-    let resp: SubmitMeasurementResponse = serde_json::from_str(&body)
-        .map_err(|e| format!("invalid JSON response: {:?}", e))?;
+    let resp: SubmitMeasurementResponse =
+        serde_json::from_str(&body).map_err(|e| format!("invalid JSON response: {:?}", e))?;
 
     let reply_bincode_bytes = b64_decode(&resp.submit_response)
         .map_err(|e| format!("invalid base64 in response: {:?}", e))?;
 
-    let reply: ooniauth_core::submit::submit::Reply =
-        bincode::deserialize(&reply_bincode_bytes).map_err(|e| {
-            format!("failed to deserialize submit reply (bincode): {:?}", e)
-        })?;
+    let reply: ooniauth_core::submit::submit::Reply = bincode::deserialize(&reply_bincode_bytes)
+        .map_err(|e| format!("failed to deserialize submit reply (bincode): {:?}", e))?;
 
     // Handle submit response
-    let updated_credential = ooniauth_core::user_submit::handle_submit_response(submit_state, reply)
-        .map_err(|e| format!("credential verification failed: {:?}", e))?;
+    let updated_credential =
+        ooniauth_core::user_submit::handle_submit_response(submit_state, reply)
+            .map_err(|e| format!("credential verification failed: {:?}", e))?;
 
     // Serialize updated credential for return
     let updated_cred_bytes = bincode::serialize(&updated_credential)
@@ -425,8 +426,8 @@ fn userauth_submit_impl(
         submit_response: updated_cred_b64,
     };
 
-    let out_json = serde_json::to_string(&out)
-        .map_err(|e| format!("failed to serialize output: {:?}", e))?;
+    let out_json =
+        serde_json::to_string(&out).map_err(|e| format!("failed to serialize output: {:?}", e))?;
 
     Ok(out_json)
 }

@@ -1605,6 +1605,29 @@ checksum = "a4895175b425cb1f87721b59f0f286c2092bd4af812243672510e1ac53e2e0ad"
 [[package]]
 name = "ooniauth-core"
 version = "0.1.0"
+source = "git+https://github.com/ooni/userauth?rev=9a0b827ba2f41b7a9fb456329e1fc5e97d2086b2#9a0b827ba2f41b7a9fb456329e1fc5e97d2086b2"
+dependencies = [
+ "bincode",
+ "chrono",
+ "cmz",
+ "curve25519-dalek",
+ "ff",
+ "group",
+ "hex",
+ "rand",
+ "serde",
+ "serde_bytes",
+ "serde_with",
+ "sha2",
+ "subtle",
+ "syn 2.0.106",
+ "thiserror 2.0.17",
+ "time",
+]
+
+[[package]]
+name = "ooniauth-core"
+version = "0.1.0"
 source = "git+https://github.com/ooni/userauth?rev=e1e58030f7c5c4848eae48c512c8dab69b07102c#e1e58030f7c5c4848eae48c512c8dab69b07102c"
 dependencies = [
  "bincode",
@@ -1652,7 +1675,7 @@ dependencies = [
  "encoding_rs",
  "hex",
  "mime",
- "ooniauth-core",
+ "ooniauth-core 0.1.0 (git+https://github.com/ooni/userauth?rev=9a0b827ba2f41b7a9fb456329e1fc5e97d2086b2)",
  "ooniprobe-services",
  "rand",
  "rquest",
@@ -1695,7 +1718,7 @@ dependencies = [
  "encoding_rs",
  "hex",
  "mime",
- "ooniauth-core",
+ "ooniauth-core 0.1.0 (git+https://github.com/ooni/userauth?rev=e1e58030f7c5c4848eae48c512c8dab69b07102c)",
  "ooniprobe-services",
  "rand",
  "rquest",

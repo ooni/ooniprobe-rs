@@ -23,11 +23,19 @@ namespace ooniprobe {
     [Throws=OoniError]
     SubmitResult userauth_submit(
         string url,
-        string credential_b64,
+        string credential,
         string public_params,
+        string content,
         string probe_cc,
         string probe_asn,
         string manifest_version
+    );
+
+    [Throws=OoniError]
+    ProbeIDResult get_probe_id(
+        string credential_b64,
+        string probe_asn,
+        string probe_cc
     );
 };
 
@@ -58,12 +66,15 @@ dictionary HttpResponse {
 };
 
 dictionary RegistrationResult {
-    string credential;
-    i32    emission_day;
+    string? credential;
+    HttpResponse response;
 };
 
 dictionary SubmitResult {
-    string?  measurement_uid;
-    boolean  is_verified;
-    string   updated_credential;
+    HttpResponse response;
+    string?   credential;
+};
+
+dictionary ProbeIDResult {
+    string probe_id;
 };

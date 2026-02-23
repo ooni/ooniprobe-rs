@@ -29,3 +29,51 @@ pub enum OoniError {
     #[error("Other error: {0}")]
     Other(String),
 }
+
+impl From<base64::DecodeError> for OoniError {
+    fn from(e: base64::DecodeError) -> Self {
+        OoniError::Base64DecodeError(e.to_string())
+    }
+}
+
+impl From<bincode::Error> for OoniError {
+    fn from(e: bincode::Error) -> Self {
+        OoniError::BincodeDecodeError(e.to_string())
+    }
+}
+
+impl From<ooniprobe_services::client::Error> for OoniError {
+    fn from(e: ooniprobe_services::client::Error) -> Self {
+        OoniError::HttpClientError(format!("{:?}", e))
+    }
+}
+
+impl From<rquest::Error> for OoniError {
+    fn from(e: rquest::Error) -> Self {
+        OoniError::HttpClientError(e.to_string())
+    }
+}
+
+impl From<ooniauth_core::errors::CredentialError> for OoniError {
+    fn from(e: ooniauth_core::errors::CredentialError) -> Self {
+        OoniError::CryptoError(format!("{:?}", e))
+    }
+}
+
+impl From<cmz::CMZError> for OoniError {
+    fn from(e: cmz::CMZError) -> Self {
+        OoniError::CryptoError(format!("{:?}", e))
+    }
+}
+
+impl From<serde_json::Error> for OoniError {
+    fn from(e: serde_json::Error) -> Self {
+        OoniError::SerializationError(e.to_string())
+    }
+}
+
+impl From<std::io::Error> for OoniError {
+    fn from(e: std::io::Error) -> Self {
+        OoniError::Other(e.to_string())
+    }
+}

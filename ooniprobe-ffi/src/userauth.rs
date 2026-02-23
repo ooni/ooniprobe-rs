@@ -2,27 +2,32 @@ use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use bincode;
 use cmz::*;
-use curve25519_dalek::ristretto::RistrettoPoint as G;
-use curve25519_dalek::Scalar;
+use curve25519_dalek::{ristretto::RistrettoPoint as G, RistrettoPoint};
+use ooniauth_core::registration::UserAuthCredential;
 use rand;
 use serde::{Deserialize, Serialize};
-use sha2::Sha512;
+use sha2::{Digest, Sha256, Sha512};
 
-use ooniauth_core::PublicParameters;
-use crate::errors::OoniError;
 use crate::client::build_client;
+use crate::errors::OoniError;
+use crate::HttpResponse;
+use ooniauth_core::PublicParameters;
+
+#[derive(Debug)]
+pub struct ProbeIDResult {
+    pub probe_id: String,
+}
 
 #[derive(Debug)]
 pub struct RegistrationResult {
-    pub credential: String,
-    pub emission_day: i32,
+    pub credential: Option<String>,
+    pub response: HttpResponse,
 }
 
 #[derive(Debug)]
 pub struct SubmitResult {
-    pub measurement_uid: Option<String>,
-    pub is_verified: bool,
-    pub updated_credential: String,
+    pub response: HttpResponse,
+    pub credential: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -38,15 +43,9 @@ struct RegistrationResponse {
 }
 
 #[derive(Serialize, Deserialize)]
-struct SubmitContent {
-    probe_cc: String,
-    probe_asn: String,
-}
-
-#[derive(Serialize, Deserialize)]
 struct SubmitMeasurementPayload {
     format: String,
-    content: SubmitContent,
+    content: serde_json::Value,
     nym: String,
     zkp_request: String,
     probe_age_range: (u32, u32),
@@ -58,7 +57,7 @@ struct SubmitMeasurementPayload {
 struct SubmitMeasurementResponse {
     measurement_uid: Option<String>,
     is_verified: bool,
-    submit_response: String,
+    submit_response: Option<String>,
 }
 
 fn b64_encode(b: &[u8]) -> String {
@@ -66,26 +65,48 @@ fn b64_encode(b: &[u8]) -> String {
 }
 
 fn b64_decode(s: &str) -> Result<Vec<u8>, OoniError> {
-    BASE64_STANDARD
-        .decode(s)
-        .map_err(|e| OoniError::Base64DecodeError(format!("{:?}", e)))
-}
+    let b64_str = BASE64_STANDARD.decode(s)?;
 
-fn today() -> u32 {
-    time::OffsetDateTime::now_utc()
-        .date()
-        .to_julian_day()
-        .try_into()
-        .expect("Julian day should fit in u32")
+    Ok(b64_str)
 }
 
 fn decode_public_params(public_params: &str) -> Result<PublicParameters, OoniError> {
     cmz_group_init(G::hash_from_bytes::<Sha512>(b"CMZ Generator A"));
     let raw = b64_decode(public_params)?;
-    let pubkey: CMZPubkey<G> = bincode::deserialize(&raw)
-        .map_err(|e| OoniError::BincodeDecodeError(format!("{:?}", e)))?;
+    let pubkey: CMZPubkey<G> = bincode::deserialize(&raw)?;
 
     Ok(pubkey)
+}
+
+fn decode_credential(credential: &str) -> Result<UserAuthCredential, OoniError> {
+    let cred_bytes = b64_decode(credential)?;
+    let credential: ooniauth_core::registration::UserAuthCredential =
+        bincode::deserialize(&cred_bytes)?;
+    Ok(credential)
+}
+
+fn digest_point(point: RistrettoPoint) -> [u8; 32] {
+    let digest = Sha256::digest(point.compress().as_bytes());
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&digest);
+    out
+}
+
+pub fn get_probe_id(
+    credential_b64: String,
+    probe_asn: String,
+    probe_cc: String,
+) -> Result<ProbeIDResult, OoniError> {
+    let credential = decode_credential(&credential_b64)?;
+    let domain_str = format!("ooni.org/{}/{}", probe_cc, probe_asn);
+    let domain = G::hash_from_bytes::<Sha512>(domain_str.as_bytes());
+
+    let nym = credential.nym_id.unwrap() * domain;
+    let raw_id = digest_point(nym);
+
+    Ok(ProbeIDResult {
+        probe_id: hex::encode(raw_id),
+    })
 }
 
 pub fn userauth_register(
@@ -93,179 +114,288 @@ pub fn userauth_register(
     public_params: String,
     manifest_version: String,
 ) -> Result<RegistrationResult, OoniError> {
+    // initialize user state with public params
     let pp = decode_public_params(&public_params)?;
+    let mut user_state = ooniauth_core::UserState::new(pp);
 
+    // prepare registration request
     let mut rng = rand::thread_rng();
-    let (reg_request, reg_state) = ooniauth_core::user_registration::request(&pp, &mut rng)
-        .map_err(|e| OoniError::CryptoError(format!("{:?}", e)))?;
-
+    let (reg_request, reg_state) = user_state.request(&mut rng)?;
     let raw_bytes = reg_request.as_bytes();
     let request_payload = b64_encode(&raw_bytes);
 
+    // prepare payload for POST to register endpoint
     let payload = RegistrationPayload {
-        manifest_version,
+        manifest_version: manifest_version,
         credential_sign_request: request_payload,
     };
-    let json_payload = serde_json::to_string(&payload)
-        .map_err(|e| OoniError::SerializationError(format!("{:?}", e)))?;
+    let json_payload = serde_json::to_string(&payload)?;
 
+    // make the API call
     let client = build_client()?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))
-        .and_then(|b| b.build().map_err(Into::into))
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
+        .and_then(|b| b.build().map_err(Into::into))?;
 
-    let response = client
-        .execute(request)
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
+    let response: HttpResponse = client.execute(request).map(Into::into)?;
 
-    let body_text = response.body_text.as_ref().expect("body_text missing");
-
-    let resp: RegistrationResponse = serde_json::from_str(body_text)
-        .map_err(|e| OoniError::SerializationError(format!("invalid JSON: {:?}", e)))?;
-
-    let reply_bytes = b64_decode(&resp.credential_sign_response)?;
-    let reply = bincode::deserialize::<ooniauth_core::registration::open_registration::Reply>(&reply_bytes)
-            .map_err(|e| OoniError::BincodeDecodeError(format!("{:?}", e)))?;
-
-    let credential = ooniauth_core::user_registration::handle_request_response(reg_state, reply)
-        .map_err(|e| OoniError::CryptoError(format!("{:?}", e)))?;
-
-    if credential.nym_id == Some(Scalar::ZERO) {
-        return Err(OoniError::InvalidCredential("nym_id is zero".to_string()));
+    // return early in case of failure
+    if response.status_code < 200 || response.status_code >= 300 {
+        return Ok(RegistrationResult {
+            credential: None,
+            response: response,
+        });
     }
 
-    // Serialize the full credential object so the caller can persist it
-    let cred_bytes = bincode::serialize(&credential)
-        .map_err(|e| OoniError::SerializationError(format!("{:?}", e)))?;
+    let body_text = response.body_text.as_ref().ok_or_else(|| {
+        OoniError::HttpClientError(String::from("Empty response body from server"))
+    })?;
+
+    let resp: RegistrationResponse = serde_json::from_str(body_text)?;
+
+    let reply_bytes = b64_decode(&resp.credential_sign_response)?;
+    let reply = bincode::deserialize::<ooniauth_core::registration::open_registration::Reply>(
+        &reply_bytes,
+    )?;
+
+    // handle API response in user state
+    user_state.handle_response(reg_state, reply)?;
+
+    let credential = user_state
+        .get_credential()
+        .ok_or(OoniError::InvalidCredential(String::from(
+            "invalid credential",
+        )))?;
+
+    // serialize the full credential object so the caller can store it
+    let cred_bytes = bincode::serialize(credential)?;
 
     Ok(RegistrationResult {
-        credential: b64_encode(&cred_bytes),
-        emission_day: resp.emission_day as i32,
+        credential: Some(b64_encode(&cred_bytes)),
+        response,
     })
 }
 
 pub fn userauth_submit(
     url: String,
-    credential_b64: String,
+    credential: String,
     public_params: String,
+    content: String,
     probe_cc: String,
     probe_asn: String,
     manifest_version: String,
 ) -> Result<SubmitResult, OoniError> {
+    // initialize the user state with public params
     let pp = decode_public_params(&public_params)?;
+    let mut user_state = ooniauth_core::UserState::new(pp);
 
-    let cred_bytes = b64_decode(&credential_b64)?;
-    let credential: ooniauth_core::registration::UserAuthCredential =
-        bincode::deserialize(&cred_bytes)
-            .map_err(|e| OoniError::BincodeDecodeError(format!("{:?}", e)))?;
+    let credential = decode_credential(&credential)?;
+    user_state.set_credential(credential.clone());
 
-    let today = today();
-    let age_range = (today - 30)..(today + 1);
-    let measurement_count_range = 0u32..100u32;
+    // extract age and measurement count from old credential
+    let age = credential
+        .age
+        .as_ref()
+        .and_then(|s| ooniauth_core::scalar_u32(s))
+        .ok_or_else(|| {
+            OoniError::CryptoError("Credential age is missing or invalid".to_string())
+        })?;
+    let measurement_count = credential
+        .measurement_count
+        .as_ref()
+        .and_then(|s| ooniauth_core::scalar_u32(s))
+        .ok_or_else(|| {
+            OoniError::CryptoError("Measurement count is missing or invalid".to_string())
+        })?;
 
+    let age_range = (age.saturating_sub(15))..(age + 15);
+    let measurement_count_range = (measurement_count.saturating_sub(10))..(measurement_count + 10);
+
+    // prepare submission request
     let mut rng = rand::thread_rng();
-    let ((submit_request, submit_state), nym) = ooniauth_core::user_submit::submit_request(
-        &credential,
-        &pp,
+    let ((submit_request, submit_state), probe_id) = user_state.submit_request(
         &mut rng,
         probe_cc.clone(),
         probe_asn.clone(),
         age_range.clone(),
         measurement_count_range.clone(),
-    )
-    .map_err(|e| OoniError::CryptoError(format!("{:?}", e)))?;
+    )?;
 
+    // prepare payload for POST to submit endpoint
+    let measurement_content: serde_json::Value = serde_json::from_str(&content)?;
     let submit_payload = SubmitMeasurementPayload {
         format: "json".to_string(),
-        content: SubmitContent {
-            probe_cc: probe_cc.clone(),
-            probe_asn: probe_asn.clone(),
-        },
-        nym: b64_encode(&nym),
+        content: measurement_content,
+        nym: b64_encode(&probe_id),
         zkp_request: b64_encode(&submit_request.as_bytes()),
         probe_age_range: (age_range.start, age_range.end),
         probe_msm_range: (measurement_count_range.start, measurement_count_range.end),
         manifest_version,
     };
 
-    let json_payload = serde_json::to_string(&submit_payload)
-        .map_err(|e| OoniError::SerializationError(format!("{:?}", e)))?;
+    let json_payload = serde_json::to_string(&submit_payload)?;
 
+    // make the API call
     let client = build_client()?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))
-        .and_then(|b| b.build().map_err(Into::into))
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
+        .and_then(|b| b.build().map_err(Into::into))?;
 
-    let response = client
-        .execute(request)
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
+    let response: HttpResponse = client.execute(request).map(Into::into)?;
 
-    let body = response
-        .to_json_str()
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
+    // return early in case of failure
+    if response.status_code < 200 || response.status_code >= 300 {
+        return Ok(SubmitResult {
+            credential: None,
+            response: response,
+        });
+    }
 
-    let resp: SubmitMeasurementResponse = serde_json::from_str(&body)
-        .map_err(|e| OoniError::SerializationError(format!("invalid JSON: {:?}", e)))?;
+    let body_text = response.body_text.as_ref().ok_or_else(|| {
+        OoniError::HttpClientError(String::from("Empty response body from server"))
+    })?;
 
-    let reply_bytes = b64_decode(&resp.submit_response)?;
-    let reply: ooniauth_core::submit::submit::Reply = bincode::deserialize(&reply_bytes)
-        .map_err(|e| OoniError::BincodeDecodeError(format!("{:?}", e)))?;
+    let resp: SubmitMeasurementResponse = serde_json::from_str(&body_text)?;
+    let submit_b64 = resp.submit_response.ok_or_else(|| {
+        OoniError::HttpClientError(String::from(
+            "Server returned 200 but missing submit_response",
+        ))
+    })?;
 
-    let updated_credential =
-        ooniauth_core::user_submit::handle_submit_response(submit_state, reply)
-            .map_err(|e| OoniError::CryptoError(format!("{:?}", e)))?;
+    let reply_bytes = b64_decode(&submit_b64)?;
+    let reply: ooniauth_core::submit::submit::Reply = bincode::deserialize(&reply_bytes)?;
 
-    let updated_cred_bytes = bincode::serialize(&updated_credential)
-        .map_err(|e| OoniError::SerializationError(format!("{:?}", e)))?;
+    // handle API response in user state
+    user_state.handle_submit_response(submit_state, reply)?;
+
+    let credential = user_state
+        .get_credential()
+        .ok_or(OoniError::InvalidCredential(String::from(
+            "invalid credential",
+        )))?;
+
+    // serialize the full credential object so the caller can store it
+    let cred_bytes = bincode::serialize(credential)?;
 
     Ok(SubmitResult {
-        measurement_uid: resp.measurement_uid,
-        is_verified: resp.is_verified,
-        updated_credential: b64_encode(&updated_cred_bytes),
+        credential: Some(b64_encode(&cred_bytes)),
+        response,
     })
 }
 
-// #[cfg(test)]
-// mod tests {
-    // #[test]
-    // fn userauth_register_works_with_manifest() {
-        // const MANIFEST_URL: &str = "https://ooniprobe.dev.ooni.io/api/v1/manifest";
+#[cfg(test)]
+mod tests {
+    use crate::client::{client_post, KeyValue};
+    use crate::userauth::{userauth_register, userauth_submit};
 
-        // const REGISTER_URL: &str = "https://ooniprobe.dev.ooni.io/api/v1/sign_credential";
+    const BASE_URL: &str = "https://api.dev.ooni.io";
 
-        // assert_eq!(manifest_resp.status_code, 200);
+    #[test]
+    fn userauth_register_works_with_public_params() {
+        let url = format!("{BASE_URL}/api/v1/sign_credential");
 
-        // let body_text = manifest_resp.body_text.as_ref().expect("body_text missing");
+        let public_params = "ASAAAAAAAAAApNRh7fk+riQoD24/O1deyv96zzUKrPl/iVfFArlNGjABIAAAAAAAAADcq4aiJe0vkFuO1YnByaMEiB8ZA/rqf1d4O/SzFec8bAMAAAAAAAAAIAAAAAAAAAD+Z9JjHXAYvJdxloiGdIaqUQF208Oq7YTdvRYDrZY8SyAAAAAAAAAAUGiViBIvG4Xd7Cv29tLNuC/y0lTINIw63Je/Zm0XXGQgAAAAAAAAAFbDFU/rX+kMZEwVlx4ZeaqYLTbYO30Kz37W8DNx2Cw3";
+        let manifest_version = "qNJGXyrYz5uz0xGtcQUEH6Lf1cY.USnY";
 
-        // let parsed: serde_json::Value =
-            // serde_json::from_str(body_text).expect("response body should be valid JSON");
+        let result =
+            userauth_register(url, public_params.to_string(), manifest_version.to_string())
+                .expect("The FFI call itself should not throw an OoniError");
 
-        // let public_params = parsed
-            // .get("manifest")
-            // .and_then(|m| m.get("public_parameters"))
-            // .and_then(|v| v.as_str())
-            // .expect("public_parameters missing")
-            // .to_string();
+        assert_eq!(
+            result.response.status_code, 200,
+            "Server should return 200 OK. Body: {:?}",
+            result.response.body_text
+        );
 
-        // let manifest_version = parsed
-            // .get("meta")
-            // .and_then(|m| m.get("version"))
-            // .and_then(|v| v.as_str())
-            // .expect("meta.version missing")
-            // .to_string();
+        let credential_b64 = result
+            .credential
+            .expect("Credential should be present on 200 OK");
 
-        // let result = userauth_register(REGISTER_URL.to_string(), public_params, manifest_version)
-            // .expect("userauth_register should succeed");
+        assert!(
+            !credential_b64.is_empty(),
+            "Encoded credential string should not be empty"
+        );
+    }
 
-        // assert!(
-            // !result.credential.is_empty(),
-            // "credential should not be empty"
-        // );
+    #[test]
+    fn userauth_submit_works_with_mock_measurement() {
+        let public_params = "ASAAAAAAAAAApNRh7fk+riQoD24/O1deyv96zzUKrPl/iVfFArlNGjABIAAAAAAAAADcq4aiJe0vkFuO1YnByaMEiB8ZA/rqf1d4O/SzFec8bAMAAAAAAAAAIAAAAAAAAAD+Z9JjHXAYvJdxloiGdIaqUQF208Oq7YTdvRYDrZY8SyAAAAAAAAAAUGiViBIvG4Xd7Cv29tLNuC/y0lTINIw63Je/Zm0XXGQgAAAAAAAAAFbDFU/rX+kMZEwVlx4ZeaqYLTbYO30Kz37W8DNx2Cw3".to_string();
+        let manifest_version = "qNJGXyrYz5uz0xGtcQUEH6Lf1cY.USnY".to_string();
 
-        // assert!(result.emission_day > 0, "emission_day should be positive");
-    // }
-// }
+        let open_url = format!("{BASE_URL}/report");
+        let report_payload = serde_json::json!({
+            "data_format_version": "0.2.0",
+            "format": "json",
+            "probe_asn": "AS117",
+            "probe_cc": "IT",
+            "software_name": "ooniprobe-engine",
+            "software_version": "0.1.0",
+            "test_name": "dummy",
+            "test_start_time": "2019-10-28 12:51:06",
+            "test_version": "0.1.0"
+        })
+        .to_string();
+
+        let open_resp = client_post(
+            open_url,
+            vec![KeyValue {
+                key: "Content-Type".into(),
+                value: "application/json".into(),
+            }],
+            report_payload,
+        )
+        .expect("Failed to open report");
+
+        let open_body: serde_json::Value =
+            serde_json::from_str(open_resp.body_text.as_ref().unwrap()).unwrap();
+
+        let report_id = open_body["report_id"].as_str().unwrap().to_string();
+        println!("Opened Report ID: {}", report_id);
+
+        let reg_result = userauth_register(
+            format!("{BASE_URL}/api/v1/sign_credential"),
+            public_params.clone(),
+            manifest_version.clone(),
+        )
+        .expect("Registration failed");
+
+        let credential = reg_result.credential.expect("No credential returned");
+        println!("Registered probe with credential: {}", credential);
+
+        let measurement_content = serde_json::json!({
+            "id": "bdd20d7a-bba5-40dd-a111-9863d7908572",
+            "probe_asn": "AS117",
+            "probe_cc": "IT",
+            "software_name": "ooniprobe-engine",
+            "software_version": "0.1.0",
+            "test_name": "dummy",
+            "test_start_time": "2019-10-28 12:51:06",
+            "test_version": "0.1.0",
+            "test_keys": {"failure": null}
+        })
+        .to_string();
+
+        let submit_url = format!("{BASE_URL}/api/v1/submit_measurement/{}", report_id);
+        let submit_result = userauth_submit(
+            submit_url,
+            credential,
+            public_params,
+            measurement_content,
+            "IT".to_string(),
+            "AS117".to_string(),
+            manifest_version,
+        )
+        .expect("Submission call failed");
+
+        assert_eq!(
+            submit_result.response.status_code, 200,
+            "Submission rejected by collector"
+        );
+        assert!(
+            submit_result.credential.is_some(),
+            "Should have received an updated credential"
+        );
+    }
+}
