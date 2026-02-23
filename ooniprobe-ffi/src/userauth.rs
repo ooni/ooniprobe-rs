@@ -288,6 +288,7 @@ pub fn userauth_submit(
 #[cfg(test)]
 mod tests {
     use crate::client::{client_post, KeyValue};
+    use crate::get_probe_id;
     use crate::userauth::{userauth_register, userauth_submit};
 
     const BASE_URL: &str = "https://api.dev.ooni.io";
@@ -364,10 +365,16 @@ mod tests {
         let credential = reg_result.credential.expect("No credential returned");
         println!("Registered probe with credential: {}", credential);
 
+        let probe_cc = "IT".to_string();
+        let probe_asn = "AS117".to_string();
+        let probe_id = get_probe_id(credential.clone(), probe_cc.clone(), probe_asn.clone())
+            .expect("No probe id returned");
+        println!("Probe ID for measurement: {}", probe_id.probe_id);
+
         let measurement_content = serde_json::json!({
             "id": "bdd20d7a-bba5-40dd-a111-9863d7908572",
-            "probe_asn": "AS117",
-            "probe_cc": "IT",
+            "probe_asn": probe_asn,
+            "probe_cc": probe_cc,
             "software_name": "ooniprobe-engine",
             "software_version": "0.1.0",
             "test_name": "dummy",
@@ -383,8 +390,8 @@ mod tests {
             credential,
             public_params,
             measurement_content,
-            "IT".to_string(),
-            "AS117".to_string(),
+            probe_cc.clone(),
+            probe_asn.clone(),
             manifest_version,
         )
         .expect("Submission call failed");
