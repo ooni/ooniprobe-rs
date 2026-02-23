@@ -50,4 +50,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.jar_name }}
-          path: desktop/build/libs/${{ matrix.jar_name }}
+          path: desktop/build/libs/*.jar
