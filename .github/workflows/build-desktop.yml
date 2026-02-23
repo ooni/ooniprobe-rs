@@ -12,15 +12,15 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: ubuntu-latest
-            make-target: desktop-linux
+            make_target: desktop-linux
             artifact_name: ooniprobe-desktop-linux.jar
 
           - os: macos-latest
-            make-target: desktop-macos
+            make_target: desktop-macos
             artifact_name: ooniprobe-desktop-macos.jar
 
           - os: windows-latest
-            make-target: desktop-windows
+            make_target: desktop-windows
             artifact_name: ooniprobe-desktop-windows.jar
 
     runs-on: ${{ matrix.os }}
