@@ -49,5 +49,5 @@ jobs:
       - name: Upload JAR Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.jar_name }}
+          name: ${{ matrix.artifact_name }}
           path: desktop/build/libs/*.jar
