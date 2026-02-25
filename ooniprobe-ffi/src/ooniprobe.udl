@@ -28,7 +28,8 @@ namespace ooniprobe {
         string content,
         string probe_cc,
         string probe_asn,
-        string manifest_version
+        string manifest_version,
+        u32 age
     );
 
     [Throws=OoniError]

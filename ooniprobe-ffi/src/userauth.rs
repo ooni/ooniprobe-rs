@@ -80,15 +80,6 @@ fn digest_point(point: RistrettoPoint) -> [u8; 32] {
     out
 }
 
-fn today() -> u32 {
-    // We will not encounter negative Julian dates (~6700 years ago)
-    // or ones larger than 32 bits
-    (time::OffsetDateTime::now_utc().date())
-        .to_julian_day()
-        .try_into()
-        .unwrap()
-}
-
 pub fn get_probe_id(
     credential_b64: String,
     probe_asn: String,
@@ -182,6 +173,7 @@ pub fn userauth_submit(
     probe_cc: String,
     probe_asn: String,
     manifest_version: String,
+    age: u32,
 ) -> Result<CredentialResult, OoniError> {
     // initialize the user state with public params
     let pp = decode_public_params(&public_params)?;
@@ -190,9 +182,7 @@ pub fn userauth_submit(
     let credential = decode_credential(&credential)?;
     user_state.set_credential(credential.clone());
 
-
-    let now = today();
-    let age_range = (now-30)..(now+2);
+    let age_range = (age - 30)..(age + 1);
     let measurement_count_range = 0..3000;
 
     // prepare submission request
@@ -379,6 +369,7 @@ mod tests {
             probe_cc.clone(),
             probe_asn.clone(),
             manifest_version,
+            2461098
         )
         .expect("Submission call failed");
 
