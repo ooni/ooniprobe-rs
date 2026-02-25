@@ -1,6 +1,6 @@
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
-use postcard;
+use bincode;
 use cmz::*;
 use curve25519_dalek::{ristretto::RistrettoPoint as G, RistrettoPoint};
 use ooniauth_core::registration::UserAuthCredential;
@@ -65,12 +65,12 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, OoniError> {
 fn decode_public_params(public_params: &str) -> Result<PublicParameters, OoniError> {
     cmz_group_init(G::hash_from_bytes::<Sha512>(b"CMZ Generator A"));
     let raw = b64_decode(public_params)?;
-    postcard::from_bytes(&raw).map_err(Into::into)
+    bincode::deserialize(&raw).map_err(Into::into)
 }
 
 fn decode_credential(credential: &str) -> Result<UserAuthCredential, OoniError> {
     let cred_bytes = b64_decode(credential)?;
-    postcard::from_bytes(&cred_bytes).map_err(Into::into)
+    bincode::deserialize(&cred_bytes).map_err(Into::into)
 }
 
 fn digest_point(point: RistrettoPoint) -> [u8; 32] {
@@ -109,7 +109,7 @@ pub fn userauth_register(
     // prepare registration request
     let mut rng = rand::thread_rng();
     let (reg_request, reg_state) = user_state.request(&mut rng)?;
-    let raw_bytes = postcard::to_allocvec(&reg_request)?;
+    let raw_bytes = reg_request.as_bytes();
     let request_payload = b64_encode(&raw_bytes);
 
     // prepare payload for POST to register endpoint
@@ -143,7 +143,7 @@ pub fn userauth_register(
     let resp: RegistrationResponse = serde_json::from_str(body_text)?;
 
     let reply_bytes = b64_decode(&resp.credential_sign_response)?;
-    let reply = postcard::from_bytes::<ooniauth_core::registration::open_registration::Reply>(
+    let reply = bincode::deserialize::<ooniauth_core::registration::open_registration::Reply>(
         &reply_bytes,
     )?;
 
@@ -157,7 +157,7 @@ pub fn userauth_register(
         )))?;
 
     // serialize the full credential object so the caller can store it
-    let cred_bytes = postcard::to_allocvec(credential)?;
+    let cred_bytes = bincode::serialize(credential)?;
 
     Ok(CredentialResult {
         credential: Some(b64_encode(&cred_bytes)),
@@ -212,7 +212,7 @@ pub fn userauth_submit(
 
     // prepare payload for POST to submit endpoint
     let measurement_content: serde_json::Value = serde_json::from_str(&content)?;
-    let request_bytes = postcard::to_allocvec(&submit_request)?;
+    let request_bytes = submit_request.as_bytes();
     let submit_payload = SubmitMeasurementPayload {
         format: "json".to_string(),
         content: measurement_content,
@@ -254,7 +254,7 @@ pub fn userauth_submit(
     })?;
 
     let reply_bytes = b64_decode(&submit_b64)?;
-    let reply = postcard::from_bytes::<ooniauth_core::submit::submit::Reply>(&reply_bytes)?;
+    let reply = bincode::deserialize::<ooniauth_core::submit::submit::Reply>(&reply_bytes)?;
 
     // handle API response in user state
     user_state.handle_submit_response(submit_state, reply)?;
@@ -266,7 +266,7 @@ pub fn userauth_submit(
         )))?;
 
     // serialize the full credential object so the caller can store it
-    let cred_bytes = postcard::to_allocvec(credential)?;
+    let cred_bytes = bincode::serialize(credential)?;
 
     Ok(CredentialResult {
         credential: Some(b64_encode(&cred_bytes)),
@@ -286,7 +286,7 @@ mod tests {
     fn userauth_register_works_with_public_params() {
         let url = format!("{BASE_URL}/api/v1/sign_credential");
 
-        let public_params = "ASAQLXA3nuXAE3EqWdGPCOhdnuHUQvzveiNbk0AxuLOnHwEgPDK8zi0QEp5itXAuRHm4EI/niFnDlJecii1xrisjORgDIKYlBK2/NgBDBuPkUq7VscpReP2FXr3xYGzA5DrffE9YIPTUjn1pq0qhMoD/oJfJwovgkv5otvOCBsxLGTZqzIcvICRQeuUNqnxEfI6BSCLUqa3+++AjEqqctoKggsqMwYAZ";
+        let public_params = "ASAwUQi8IIdSrIP6xNzgEHXjriNx13O/upZ624zwEBxWDQEgIpFQfa5g+mif55nXmJHIieoTS9dHgHDP2MsJcIGzBnADINo9E7KP2ep168WHl9S228xGl/hGuK++7qd6Je5ay5RbIPAxyKtsqLL9zmxZkr4jWvlylHT9Us0inXU3G/5LHoIuIKKKUr2U/8V/sEpCISuwOEhd7UhNgEww1E0mJZtSt1MP";
         let manifest_version = "3KbgvoAmwWRXS8WggPr8glrYw9t4NZxU";
 
         let result =

@@ -5,7 +5,7 @@ pub mod userauth;
 pub use client::{client_get, client_post, HttpResponse, KeyValue};
 pub use errors::OoniError;
 pub use userauth::{
-    get_probe_id, userauth_register, userauth_submit, ProbeIDResult, CredentialResult,
+    get_probe_id, userauth_register, userauth_submit, CredentialResult, ProbeIDResult,
 };
 
 // Required for UniFFI scaffolding

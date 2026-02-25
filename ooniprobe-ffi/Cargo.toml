@@ -9,7 +9,7 @@ name = "uniffi_ooniprobe"
 
 [dependencies]
 uniffi = { version = "0.28", features = ["tokio"] }
-ooniauth-core = { git = "https://github.com/ooni/userauth", rev = "9a0b827ba2f41b7a9fb456329e1fc5e97d2086b2" }
+ooniauth-core = { git = "https://github.com/ooni/userauth", rev = "ad51baf" }
 cmz = {workspace = true}
 postcard = { version = "1", features = ["alloc"] }
 sha2 = "0.10.9"
