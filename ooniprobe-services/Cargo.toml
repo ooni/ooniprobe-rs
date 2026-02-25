@@ -13,7 +13,8 @@ tokio = { workspace = true }
 jni = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-rquest = { workspace = true }
+wreq = { workspace = true }
+wreq-util = { workspace = true }
 http = { workspace = true }
 mime = { workspace = true }
 url = { workspace = true }

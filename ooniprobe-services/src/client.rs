@@ -4,6 +4,7 @@ use encoding_rs::{Encoding, UTF_8};
 use mime::Mime;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use wreq_util::Emulation;
 use std::time::Duration;
 
 use std::io;
@@ -34,7 +35,7 @@ impl ClientOptions {
 pub enum Error {
     InvalidHttpMethod,
     UndetectedCharset,
-    Rquest(Box<rquest::Error>),
+    Wreq(Box<wreq::Error>),
     Serialization,
     Io(io::Error),
 }
@@ -45,9 +46,9 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<rquest::Error> for Error {
-    fn from(error: rquest::Error) -> Self {
-        Self::Rquest(Box::new(error))
+impl From<wreq::Error> for Error {
+    fn from(error: wreq::Error) -> Self {
+        Self::Wreq(Box::new(error))
     }
 }
 
@@ -63,13 +64,13 @@ pub struct Response {
 }
 
 impl Response {
-    fn from_request(req: &rquest::Response) -> Self {
+    fn from_request(req: &wreq::Response) -> Self {
         let version = match req.version() {
-            rquest::Version::HTTP_09 => "HTTP/0.9",
-            rquest::Version::HTTP_10 => "HTTP/1.0",
-            rquest::Version::HTTP_11 => "HTTP/1.1",
-            rquest::Version::HTTP_2 => "HTTP/2.0",
-            rquest::Version::HTTP_3 => "HTTP/3.0",
+            wreq::Version::HTTP_09 => "HTTP/0.9",
+            wreq::Version::HTTP_10 => "HTTP/1.0",
+            wreq::Version::HTTP_11 => "HTTP/1.1",
+            wreq::Version::HTTP_2 => "HTTP/2.0",
+            wreq::Version::HTTP_3 => "HTTP/3.0",
             _ => unreachable!(),
         };
 
@@ -102,9 +103,9 @@ impl Response {
     }
 }
 
-fn decode_to_text(bytes: &Bytes, headers: &rquest::header::HeaderMap) -> Result<String, Error> {
+fn decode_to_text(bytes: &Bytes, headers: &wreq::header::HeaderMap) -> Result<String, Error> {
     let content_type = headers
-        .get(rquest::header::CONTENT_TYPE)
+        .get(wreq::header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.parse::<Mime>().ok());
     let encoding_name = content_type
@@ -130,12 +131,12 @@ impl Client {
         ClientBuilder::new()
     }
 
-    pub fn execute(&self, request: rquest::Request) -> Result<Response, Error> {
+    pub fn execute(&self, request: wreq::Request) -> Result<Response, Error> {
         self.rt.block_on(async {
-            let rquest_resp: rquest::Response = self.inner.http_client.execute(request).await?;
-            let headers = rquest_resp.headers().clone();
-            let mut response = Response::from_request(&rquest_resp);
-            let resp_bytes = rquest_resp.bytes().await?;
+            let wreq_resp: wreq::Response = self.inner.http_client.execute(request).await?;
+            let headers = wreq_resp.headers().clone();
+            let mut response = Response::from_request(&wreq_resp);
+            let resp_bytes = wreq_resp.bytes().await?;
             match decode_to_text(&resp_bytes, &headers) {
                 Ok(r) => response.body_text = Some(r),
                 Err(_) => response.body_b64_bytes = Some(b64_encode(resp_bytes.as_ref())),
@@ -144,7 +145,7 @@ impl Client {
         })
     }
 
-    pub fn request(&self, method: &str, url: &str) -> Result<rquest::RequestBuilder, Error> {
+    pub fn request(&self, method: &str, url: &str) -> Result<wreq::RequestBuilder, Error> {
         let m = match method.to_uppercase().as_str() {
             "GET" => http::Method::GET,
             "POST" => http::Method::POST,
@@ -158,7 +159,7 @@ impl Client {
 }
 
 pub struct ClientRef {
-    http_client: rquest::Client,
+    http_client: wreq::Client,
 }
 
 #[derive(Debug, Clone)]
@@ -183,12 +184,7 @@ impl ClientBuilder {
     }
 
     pub fn build(self) -> Result<Client, Error> {
-        let mut client_builder =
-            rquest::Client::builder().impersonate(rquest::Impersonate::Chrome118);
-
-        if let Some(url) = self.client_options.base_url {
-            client_builder = client_builder.base_url(&url);
-        }
+        let mut client_builder = wreq::Client::builder().emulation(Emulation::Chrome118);
 
         if let Some(timeout) = self.client_options.timeout {
             client_builder = client_builder.timeout(Duration::from_secs_f32(timeout));
@@ -220,7 +216,7 @@ mod tests {
     fn test_get_oonirun_descriptor() {
         let client = Client::builder().build().unwrap();
         let request = client
-            .request("GET", "/api/v2/oonirun/links/10001/engine-descriptor/1")
+            .request("GET", "https://api.ooni.org/api/v2/oonirun/links/10001/engine-descriptor/1")
             .expect("failed to build request")
             .build()
             .unwrap();
@@ -232,13 +228,13 @@ mod tests {
     #[test]
     fn test_binary_data() {
         let mut client_options = ClientOptions::new();
-        client_options.base_url = Some("https://httpbin.org/".to_string());
+        client_options.timeout = Some(5.0);
         let client = Client::builder()
             .set_options(client_options)
             .build()
             .unwrap();
         let request = client
-            .request("GET", "stream-bytes/100")
+            .request("GET", "https://httpbin.org/stream-bytes/100")
             .expect("failed to build request")
             .build()
             .unwrap();

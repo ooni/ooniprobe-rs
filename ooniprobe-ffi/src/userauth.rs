@@ -80,6 +80,15 @@ fn digest_point(point: RistrettoPoint) -> [u8; 32] {
     out
 }
 
+fn today() -> u32 {
+    // We will not encounter negative Julian dates (~6700 years ago)
+    // or ones larger than 32 bits
+    (time::OffsetDateTime::now_utc().date())
+        .to_julian_day()
+        .try_into()
+        .unwrap()
+}
+
 pub fn get_probe_id(
     credential_b64: String,
     probe_asn: String,
@@ -181,24 +190,10 @@ pub fn userauth_submit(
     let credential = decode_credential(&credential)?;
     user_state.set_credential(credential.clone());
 
-    // extract age and measurement count from old credential
-    let age = credential
-        .age
-        .as_ref()
-        .and_then(|s| ooniauth_core::scalar_u32(s))
-        .ok_or_else(|| {
-            OoniError::CryptoError("Credential age is missing or invalid".to_string())
-        })?;
-    let measurement_count = credential
-        .measurement_count
-        .as_ref()
-        .and_then(|s| ooniauth_core::scalar_u32(s))
-        .ok_or_else(|| {
-            OoniError::CryptoError("Measurement count is missing or invalid".to_string())
-        })?;
 
-    let age_range = (age.saturating_sub(15))..(age + 15);
-    let measurement_count_range = (measurement_count.saturating_sub(10))..(measurement_count + 10);
+    let now = today();
+    let age_range = (now-30)..(now+2);
+    let measurement_count_range = 0..3000;
 
     // prepare submission request
     let mut rng = rand::thread_rng();
@@ -247,11 +242,12 @@ pub fn userauth_submit(
     })?;
 
     let resp: SubmitMeasurementResponse = serde_json::from_str(&body_text)?;
-    let submit_b64 = resp.submit_response.ok_or_else(|| {
-        OoniError::HttpClientError(String::from(
-            "Server returned 200 but missing submit_response",
-        ))
-    })?;
+    let Some(submit_b64) = resp.submit_response else {
+        return Ok(CredentialResult {
+            credential: None,
+            response: response
+        })
+    };
 
     let reply_bytes = b64_decode(&submit_b64)?;
     let reply = bincode::deserialize::<ooniauth_core::submit::submit::Reply>(&reply_bytes)?;
@@ -286,8 +282,8 @@ mod tests {
     fn userauth_register_works_with_public_params() {
         let url = format!("{BASE_URL}/api/v1/sign_credential");
 
-        let public_params = "ASAwUQi8IIdSrIP6xNzgEHXjriNx13O/upZ624zwEBxWDQEgIpFQfa5g+mif55nXmJHIieoTS9dHgHDP2MsJcIGzBnADINo9E7KP2ep168WHl9S228xGl/hGuK++7qd6Je5ay5RbIPAxyKtsqLL9zmxZkr4jWvlylHT9Us0inXU3G/5LHoIuIKKKUr2U/8V/sEpCISuwOEhd7UhNgEww1E0mJZtSt1MP";
-        let manifest_version = "3KbgvoAmwWRXS8WggPr8glrYw9t4NZxU";
+        let public_params = "ASAAAAAAAAAAaBoSmSenkROffQvFETMO6MDD5LwxxxD7hfvFrlPv7XIBIAAAAAAAAAAWEktR78DA11bL4SgGPQV3VxeMqbcgE6oXF1CSL4A/JQMAAAAAAAAAIAAAAAAAAACap5+DGII+KNQB7vWB8Cttav7ADisKeRdktfYjXISeSiAAAAAAAAAAhBEiHB7s8COTd4hnoNx1Ouhzu8NFMzA5lS8Lp7wKIiggAAAAAAAAAMJnquClIeYM+Vm7uPq5vVAmkzQOVfG7OoeUFB7QjMtV";
+        let manifest_version = "3vwveZ4amAz05jqz34w5MQdkOwD03tO8";
 
         let result =
             userauth_register(url, public_params.to_string(), manifest_version.to_string())
@@ -311,8 +307,8 @@ mod tests {
 
     #[test]
     fn userauth_submit_works_with_mock_measurement() {
-        let public_params = "ASAQLXA3nuXAE3EqWdGPCOhdnuHUQvzveiNbk0AxuLOnHwEgPDK8zi0QEp5itXAuRHm4EI/niFnDlJecii1xrisjORgDIKYlBK2/NgBDBuPkUq7VscpReP2FXr3xYGzA5DrffE9YIPTUjn1pq0qhMoD/oJfJwovgkv5otvOCBsxLGTZqzIcvICRQeuUNqnxEfI6BSCLUqa3+++AjEqqctoKggsqMwYAZ".to_string();
-        let manifest_version = "3KbgvoAmwWRXS8WggPr8glrYw9t4NZxU".to_string();
+        let public_params = "ASAAAAAAAAAAaBoSmSenkROffQvFETMO6MDD5LwxxxD7hfvFrlPv7XIBIAAAAAAAAAAWEktR78DA11bL4SgGPQV3VxeMqbcgE6oXF1CSL4A/JQMAAAAAAAAAIAAAAAAAAACap5+DGII+KNQB7vWB8Cttav7ADisKeRdktfYjXISeSiAAAAAAAAAAhBEiHB7s8COTd4hnoNx1Ouhzu8NFMzA5lS8Lp7wKIiggAAAAAAAAAMJnquClIeYM+Vm7uPq5vVAmkzQOVfG7OoeUFB7QjMtV".to_string();
+        let manifest_version = "3vwveZ4amAz05jqz34w5MQdkOwD03tO8".to_string();
 
         let open_url = format!("{BASE_URL}/report");
         let report_payload = serde_json::json!({

@@ -1,6 +1,0 @@
-[package]
-name = "ooniprobe-core"
-version = { workspace = true }
-edition = { workspace = true }
-
-[dependencies]

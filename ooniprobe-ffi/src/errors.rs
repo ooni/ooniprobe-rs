@@ -48,8 +48,8 @@ impl From<ooniprobe_services::client::Error> for OoniError {
     }
 }
 
-impl From<rquest::Error> for OoniError {
-    fn from(e: rquest::Error) -> Self {
+impl From<wreq::Error> for OoniError {
+    fn from(e: wreq::Error) -> Self {
         OoniError::HttpClientError(e.to_string())
     }
 }
