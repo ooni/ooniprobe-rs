@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "ooniprobe-services",
-    "ooniprobe-userauth",
     "ooniprobe-ffi",
     "uniffi-bindgen"
 ]
@@ -14,7 +13,6 @@ edition = "2021"
 [workspace.dependencies]
 ooniprobe-experiments = { version = "0.1.0", path = "./ooniprobe-experiments" }
 ooniprobe-services = { version = "0.1.0", path = "./ooniprobe-services" }
-ooniprobe-userauth = {version = "0.1.0", path= "./ooniprobe-userauth"}
 rand = "0.8.5" 
 bincode = "1"
 thiserror = "2.0.12"

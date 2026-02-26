@@ -1730,29 +1730,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ooniauth-core"
-version = "0.1.0"
-source = "git+https://github.com/ooni/userauth?rev=e1e58030f7c5c4848eae48c512c8dab69b07102c#e1e58030f7c5c4848eae48c512c8dab69b07102c"
-dependencies = [
- "bincode",
- "chrono",
- "cmz",
- "curve25519-dalek",
- "ff",
- "group",
- "hex",
- "rand",
- "serde",
- "serde_bytes",
- "serde_with",
- "sha2",
- "subtle",
- "syn 2.0.106",
- "thiserror 2.0.17",
- "time",
-]
-
-[[package]]
 name = "ooniprobe-ffi"
 version = "0.1.0"
 dependencies = [
@@ -1764,7 +1741,7 @@ dependencies = [
  "encoding_rs",
  "hex",
  "mime",
- "ooniauth-core 0.1.0 (git+https://github.com/ooni/userauth?rev=ad51baf)",
+ "ooniauth-core",
  "ooniprobe-services",
  "postcard",
  "rand",
@@ -1796,27 +1773,6 @@ dependencies = [
  "url",
  "wreq",
  "wreq-util",
-]
-
-[[package]]
-name = "ooniprobe-userauth"
-version = "0.1.0"
-dependencies = [
- "base64",
- "bincode",
- "bytes",
- "curve25519-dalek",
- "encoding_rs",
- "hex",
- "mime",
- "ooniauth-core 0.1.0 (git+https://github.com/ooni/userauth?rev=e1e58030f7c5c4848eae48c512c8dab69b07102c)",
- "ooniprobe-services",
- "rand",
- "serde",
- "serde_json",
- "time",
- "tokio",
- "wreq",
 ]
 
 [[package]]
