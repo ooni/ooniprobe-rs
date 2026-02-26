@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  passport-tests:
+  ooniprobe-passport:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -21,7 +21,7 @@ jobs:
       - name: Run tests
         run: cargo test -p ooniprobe-ffi --all-targets --locked --verbose
 
-  service-tests:
+  ooniprobe-service:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
