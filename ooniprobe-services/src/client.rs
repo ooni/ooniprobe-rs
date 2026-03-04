@@ -4,8 +4,9 @@ use encoding_rs::{Encoding, UTF_8};
 use mime::Mime;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use wreq_util::Emulation;
 use std::time::Duration;
+use wreq::CertStore;
+use wreq_util::Emulation;
 
 use std::io;
 use tokio::runtime::Runtime;
@@ -184,7 +185,11 @@ impl ClientBuilder {
     }
 
     pub fn build(self) -> Result<Client, Error> {
-        let mut client_builder = wreq::Client::builder().emulation(Emulation::Chrome118);
+        let mut client_builder = wreq::Client::builder()
+            .cert_store(CertStore::from_der_certs(
+                webpki_root_certs::TLS_SERVER_ROOT_CERTS,
+            )?)
+            .emulation(Emulation::Chrome118);
 
         if let Some(timeout) = self.client_options.timeout {
             client_builder = client_builder.timeout(Duration::from_secs_f32(timeout));
@@ -216,7 +221,10 @@ mod tests {
     fn test_get_oonirun_descriptor() {
         let client = Client::builder().build().unwrap();
         let request = client
-            .request("GET", "https://api.ooni.org/api/v2/oonirun/links/10001/engine-descriptor/1")
+            .request(
+                "GET",
+                "https://api.ooni.org/api/v2/oonirun/links/10001/engine-descriptor/1",
+            )
             .expect("failed to build request")
             .build()
             .unwrap();

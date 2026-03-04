@@ -1771,6 +1771,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "url",
+ "webpki-root-certs 1.0.6",
  "wreq",
  "wreq-util",
 ]
@@ -2947,6 +2948,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "webpki-root-certs"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "804f18a4ac2676ffb4e8b5b5fa9ae38af06df08162314f96a68d2a363e21a8ca"
+dependencies = [
+ "rustls-pki-types",
+]
+
+[[package]]
 name = "weedle2"
 version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3265,7 +3275,7 @@ dependencies = [
  "tower-service",
  "typed-builder",
  "url",
- "webpki-root-certs",
+ "webpki-root-certs 0.26.7",
  "windows-registry",
 ]
 

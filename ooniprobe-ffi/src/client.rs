@@ -1,8 +1,8 @@
 use crate::errors::OoniError;
 
 use ooniprobe_services::client::{Client, Response};
-use wreq::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
+use wreq::header::{HeaderMap, HeaderName, HeaderValue};
 
 // Must match the UDL dictionary definitions.
 

@@ -235,8 +235,8 @@ pub fn userauth_submit(
     let Some(submit_b64) = resp.submit_response else {
         return Ok(CredentialResult {
             credential: None,
-            response: response
-        })
+            response: response,
+        });
     };
 
     let reply_bytes = b64_decode(&submit_b64)?;
@@ -369,7 +369,7 @@ mod tests {
             probe_cc.clone(),
             probe_asn.clone(),
             manifest_version,
-            2461098
+            2461098,
         )
         .expect("Submission call failed");
 
