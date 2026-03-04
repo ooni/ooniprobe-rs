@@ -187,7 +187,7 @@ pub fn userauth_submit(
     let credential = decode_credential(&credential)?;
     user_state.set_credential(credential.clone());
 
-    let age_range = (age - 30)..(age + 1);
+    let age_range = age.saturating_sub(30)..age.saturating_add(1);
     let measurement_count_range = 0..3000;
 
     // prepare submission request
