@@ -89,7 +89,12 @@ pub fn get_probe_id(
     let domain_str = format!("ooni.org/{}/{}", probe_cc, probe_asn);
     let domain = G::hash_from_bytes::<Sha512>(domain_str.as_bytes());
 
-    let nym = credential.nym_id.unwrap() * domain;
+    let nym = credential
+        .nym_id
+        .ok_or(OoniError::InvalidCredential(String::from(
+            "invalid credential",
+        )))?
+        * domain;
     let raw_id = digest_point(nym);
 
     Ok(ProbeIDResult {
