@@ -5,7 +5,7 @@ use mime::Mime;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
-use wreq::CertStore;
+use wreq::tls::CertStore;
 use wreq_util::Emulation;
 
 use std::io;
@@ -188,12 +188,8 @@ impl ClientBuilder {
         let mut client_builder = wreq::Client::builder()
             .cert_store(CertStore::from_der_certs(
                 webpki_root_certs::TLS_SERVER_ROOT_CERTS,
-            )?);
-        
-        #[cfg(not(target_os = "ios"))]
-        {
-            client_builder = client_builder.emulation(Emulation::Chrome118);
-        }
+            )?)
+            .emulation(Emulation::Chrome118);
 
         if let Some(timeout) = self.client_options.timeout {
             client_builder = client_builder.timeout(Duration::from_secs_f32(timeout));
