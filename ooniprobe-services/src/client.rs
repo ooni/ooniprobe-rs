@@ -188,8 +188,12 @@ impl ClientBuilder {
         let mut client_builder = wreq::Client::builder()
             .cert_store(CertStore::from_der_certs(
                 webpki_root_certs::TLS_SERVER_ROOT_CERTS,
-            )?)
-            .emulation(Emulation::Chrome118);
+            )?);
+        
+        #[cfg(not(target_os = "ios"))]
+        {
+            client_builder = client_builder.emulation(Emulation::Chrome118);
+        }
 
         if let Some(timeout) = self.client_options.timeout {
             client_builder = client_builder.timeout(Duration::from_secs_f32(timeout));
