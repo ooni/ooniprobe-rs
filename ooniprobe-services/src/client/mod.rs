@@ -51,6 +51,7 @@ impl From<io::Error> for Error {
     }
 }
 
+#[cfg(not(target_os = "ios"))]
 impl From<wreq::Error> for Error {
     fn from(error: wreq::Error) -> Self {
         Self::Wreq(Box::new(error))
