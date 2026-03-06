@@ -29,5 +29,11 @@ rand = { workspace = true }
 time = { workspace = true }
 thiserror = "1.0"
 
+[target.'cfg(not(target_os = "ios"))'.dependencies]
+wreq = { workspace = true }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+reqwest = { workspace = true }
+
 [build-dependencies]
 uniffi = { version = "0.28", features = ["build"] }

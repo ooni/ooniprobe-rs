@@ -2,7 +2,12 @@ use crate::errors::OoniError;
 
 use ooniprobe_services::client::{Client, Response};
 use serde::{Deserialize, Serialize};
+
+#[cfg(not(target_os = "ios"))]
 use wreq::header::{HeaderMap, HeaderName, HeaderValue};
+
+#[cfg(target_os = "ios")]
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 
 // Must match the UDL dictionary definitions.
 
