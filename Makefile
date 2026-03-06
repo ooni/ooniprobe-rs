@@ -73,23 +73,18 @@ ios-targets:
 
 .PHONY: ios-libs
 ios-libs: ios-targets
-	OPENSSL_NO_ASM=1 \
 	SDKROOT=$(IPHONEOS_SDK) \
 	IPHONEOS_DEPLOYMENT_TARGET=$(MIN_IOS_VERSION) \
 	cargo build -p $(CRATE) --target aarch64-apple-ios --release
 
-	OPENSSL_NO_ASM=1 \
 	SDKROOT=$(IPHONESIMULATOR_SDK) \
 	IPHONEOS_DEPLOYMENT_TARGET=$(MIN_IOS_VERSION) \
 	BINDGEN_EXTRA_CLANG_ARGS="-target arm64-apple-ios$(MIN_IOS_VERSION)-simulator" \
-	CFLAGS_aarch64_apple_ios_sim="-target arm64-apple-ios$(MIN_IOS_VERSION)-simulator -isysroot $(IPHONESIMULATOR_SDK)" \
 	cargo build -p $(CRATE) --target aarch64-apple-ios-sim --release
 
-	OPENSSL_NO_ASM=1 \
 	SDKROOT=$(IPHONESIMULATOR_SDK) \
 	IPHONEOS_DEPLOYMENT_TARGET=$(MIN_IOS_VERSION) \
 	BINDGEN_EXTRA_CLANG_ARGS="-target x86_64-apple-ios$(MIN_IOS_VERSION)-simulator" \
-	CFLAGS_x86_64_apple_ios="-target x86_64-apple-ios$(MIN_IOS_VERSION)-simulator -isysroot $(IPHONESIMULATOR_SDK)" \
 	cargo build -p $(CRATE) --target x86_64-apple-ios --release
 
 .PHONY: ios-universal-sim
