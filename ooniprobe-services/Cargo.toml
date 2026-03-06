@@ -13,12 +13,17 @@ tokio = { workspace = true }
 jni = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-wreq = { workspace = true }
-wreq-util = { workspace = true }
 http = { workspace = true }
 mime = { workspace = true }
 url = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
 encoding_rs = { workspace = true }
+
+[target.'cfg(not(target_os = "ios"))'.dependencies]
+wreq = { workspace = true }
+wreq-util = { workspace = true }
 webpki-root-certs = { workspace = true }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+reqwest = { workspace = true }

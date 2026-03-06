@@ -1,107 +1,21 @@
-use base64::{engine::general_purpose, Engine as _};
 use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
 use mime::Mime;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::runtime::Runtime;
 use wreq::tls::CertStore;
 use wreq_util::Emulation;
 
-use std::io;
-use tokio::runtime::Runtime;
+use super::{b64_encode, ClientOptions, Error, Response};
 
-fn b64_encode(b: &[u8]) -> String {
-    general_purpose::STANDARD.encode(b)
+pub struct Client {
+    inner: Arc<ClientRef>,
+    rt: Runtime,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ClientOptions {
-    base_url: Option<String>,
-    timeout: Option<f32>,
-    user_agent: Option<String>,
-}
-
-impl ClientOptions {
-    pub fn new() -> Self {
-        Self {
-            base_url: None,
-            timeout: None,
-            user_agent: None,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Error {
-    InvalidHttpMethod,
-    UndetectedCharset,
-    Wreq(Box<wreq::Error>),
-    Serialization,
-    Io(io::Error),
-}
-
-impl From<io::Error> for Error {
-    fn from(error: io::Error) -> Self {
-        Self::Io(error)
-    }
-}
-
-impl From<wreq::Error> for Error {
-    fn from(error: wreq::Error) -> Self {
-        Self::Wreq(Box::new(error))
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Response {
-    pub status_code: u16,
-    pub version: String,
-    // We place inside of text the headers which we can parse to a string and in bytes those which cannot be parsed as string as a base64 encoding of them.
-    pub headers_list_text: Vec<(String, String)>,
-    pub headers_list_b64_bytes: Vec<(String, String)>,
-    pub body_text: Option<String>,
-    pub body_b64_bytes: Option<String>,
-}
-
-impl Response {
-    fn from_request(req: &wreq::Response) -> Self {
-        let version = match req.version() {
-            wreq::Version::HTTP_09 => "HTTP/0.9",
-            wreq::Version::HTTP_10 => "HTTP/1.0",
-            wreq::Version::HTTP_11 => "HTTP/1.1",
-            wreq::Version::HTTP_2 => "HTTP/2.0",
-            wreq::Version::HTTP_3 => "HTTP/3.0",
-            _ => unreachable!(),
-        };
-
-        let mut headers_list_text = Vec::new();
-        let mut headers_list_b64_bytes = Vec::new();
-
-        for (key, value) in req.headers() {
-            let header_name = key.to_string();
-            match value.to_str() {
-                Ok(text_value) => {
-                    headers_list_text.push((header_name, text_value.to_string()));
-                }
-                Err(_) => {
-                    headers_list_b64_bytes.push((header_name, b64_encode(value.as_bytes())));
-                }
-            }
-        }
-        Self {
-            status_code: req.status().as_u16(),
-            version: version.to_string(),
-            headers_list_text,
-            headers_list_b64_bytes,
-            body_text: None,
-            body_b64_bytes: None,
-        }
-    }
-
-    pub fn to_json_str(&self) -> Result<String, Error> {
-        serde_json::to_string(self).map_err(|_| Error::Serialization)
-    }
+struct ClientRef {
+    http_client: wreq::Client,
 }
 
 fn decode_to_text(bytes: &Bytes, headers: &wreq::header::HeaderMap) -> Result<String, Error> {
@@ -122,11 +36,6 @@ fn decode_to_text(bytes: &Bytes, headers: &wreq::header::HeaderMap) -> Result<St
     Ok(text.into_owned())
 }
 
-pub struct Client {
-    inner: Arc<ClientRef>,
-    rt: Runtime,
-}
-
 impl Client {
     pub fn builder() -> ClientBuilder {
         ClientBuilder::new()
@@ -135,14 +44,48 @@ impl Client {
     pub fn execute(&self, request: wreq::Request) -> Result<Response, Error> {
         self.rt.block_on(async {
             let wreq_resp: wreq::Response = self.inner.http_client.execute(request).await?;
+
+            let status_code = wreq_resp.status().as_u16();
+            let version = match wreq_resp.version() {
+                wreq::Version::HTTP_09 => "HTTP/0.9",
+                wreq::Version::HTTP_10 => "HTTP/1.0",
+                wreq::Version::HTTP_11 => "HTTP/1.1",
+                wreq::Version::HTTP_2 => "HTTP/2.0",
+                wreq::Version::HTTP_3 => "HTTP/3.0",
+                _ => unreachable!(),
+            }
+            .to_string();
+
             let headers = wreq_resp.headers().clone();
-            let mut response = Response::from_request(&wreq_resp);
+
+            let mut headers_list_text = Vec::new();
+            let mut headers_list_b64_bytes = Vec::new();
+            for (key, value) in &headers {
+                let header_name = key.to_string();
+                match value.to_str() {
+                    Ok(text_value) => {
+                        headers_list_text.push((header_name, text_value.to_string()));
+                    }
+                    Err(_) => {
+                        headers_list_b64_bytes.push((header_name, b64_encode(value.as_bytes())));
+                    }
+                }
+            }
+
             let resp_bytes = wreq_resp.bytes().await?;
-            match decode_to_text(&resp_bytes, &headers) {
-                Ok(r) => response.body_text = Some(r),
-                Err(_) => response.body_b64_bytes = Some(b64_encode(resp_bytes.as_ref())),
+            let (body_text, body_b64_bytes) = match decode_to_text(&resp_bytes, &headers) {
+                Ok(r) => (Some(r), None),
+                Err(_) => (None, Some(b64_encode(resp_bytes.as_ref()))),
             };
-            Ok(response)
+
+            Ok(Response {
+                status_code,
+                version,
+                headers_list_text,
+                headers_list_b64_bytes,
+                body_text,
+                body_b64_bytes,
+            })
         })
     }
 
@@ -159,11 +102,6 @@ impl Client {
     }
 }
 
-pub struct ClientRef {
-    http_client: wreq::Client,
-}
-
-#[derive(Debug, Clone)]
 pub struct ClientBuilder {
     client_options: ClientOptions,
 }
@@ -199,12 +137,14 @@ impl ClientBuilder {
             client_builder = client_builder.user_agent(&agent);
         }
 
-        let http_client = client_builder.build().expect("failed to build http_client");
+        let http_client = client_builder
+            .build()
+            .map_err(|e| Error::Wreq(Box::new(e)))?;
 
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .expect("failed to tokio build runtime");
+            .expect("failed to build tokio runtime");
 
         Ok(Client {
             inner: Arc::new(ClientRef { http_client }),
