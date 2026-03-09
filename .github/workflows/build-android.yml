@@ -98,7 +98,7 @@ jobs:
           run: |
             mvn -f maven/pom.xml clean deploy \
               -P deploy-android \
-              -Dandroid.aar.name=ooniprobe-release.aar \
+              -Dandroid.aar.name=$(ls maven/*.aar | xargs basename) \
               --batch-mode \
               -DskipTests
           env:
