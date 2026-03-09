@@ -3,7 +3,7 @@ name: Build Desktop JARs
 on:
   workflow_dispatch:
   push:
-    branches: [ feat/ooniprobe-ffi-kotlin ]
+    branches: [ 'feat/**' ]
 
 jobs:
   build-linux:
@@ -76,9 +76,10 @@ jobs:
             VERSION="${SHORT_SHA}"
           fi
           echo "Generated version: $VERSION"
+          sed -i 's/@ARTIFACT_ID@/passport-linux/' maven/pom.xml
           mvn -f maven/pom.xml versions:set \
             -P deploy-desktop \
-            -DnewVersion=${VERSION}-linux \
+            -DnewVersion=${VERSION} \
             -DremoveSnapshot=true
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -161,9 +162,10 @@ jobs:
             VERSION="${SHORT_SHA}"
           fi
           echo "Generated version: $VERSION"
+          sed -i 's/@ARTIFACT_ID@/passport-macos/' maven/pom.xml
           mvn -f maven/pom.xml versions:set \
             -P deploy-desktop \
-            -DnewVersion=${VERSION}-macos \
+            -DnewVersion=${VERSION} \
             -DremoveSnapshot=true
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -246,9 +248,10 @@ jobs:
             VERSION="${SHORT_SHA}"
           fi
           echo "Generated version: $VERSION"
+          sed -i 's/@ARTIFACT_ID@/passport-windows/' maven/pom.xml
           mvn -f maven/pom.xml versions:set \
             -P deploy-desktop \
-            -DnewVersion=${VERSION}-windows \
+            -DnewVersion=${VERSION} \
             -DremoveSnapshot=true
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
