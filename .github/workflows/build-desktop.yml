@@ -1,6 +1,7 @@
 name: Build Desktop JARs
 
 on:
+  workflow_dispatch:
   push:
     branches: [ feat/ooniprobe-ffi-kotlin ]
 
@@ -35,64 +36,64 @@ jobs:
           name: desktop-linux
           path: desktop/build/libs/*.jar
 
-    publish-linux:
-      runs-on: ubuntu-latest
-      needs: build-linux
+  publish-linux:
+    runs-on: ubuntu-latest
+    needs: build-linux
 
-      permissions:
-        contents: write
+    permissions:
+      contents: write
 
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v4
-          with:
-            fetch-depth: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-        - name: Set up JDK
-          uses: actions/setup-java@v4
-          with:
-            java-version: '17'
-            distribution: 'temurin'
-            cache: 'maven'
-            server-id: central
-            server-username: ${{ secrets.MAVEN_USERNAME }}
-            server-password: ${{ secrets.MAVEN_PASSWORD }}
-            gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-            gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+          server-id: central
+          server-username: ${{ secrets.MAVEN_USERNAME }}
+          server-password: ${{ secrets.MAVEN_PASSWORD }}
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
-        - name: Download JAR artifact
-          uses: actions/download-artifact@v4
-          with:
-            name: desktop-linux
-            path: maven
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-linux
+          path: maven
 
-        - name: Set Project Version
-          run: |
-            if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-              VERSION="${GITHUB_REF_NAME#v}"
-            else
-              SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-8)
-              VERSION="${SHORT_SHA}"
-            fi
-            echo "Generated version: $VERSION"
-            mvn -f maven/pom.xml versions:set \
-              -P deploy-desktop \
-              -DnewVersion=${VERSION}-linux \
-              -DremoveSnapshot=true
-          env:
-            MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Set Project Version
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-8)
+            VERSION="${SHORT_SHA}"
+          fi
+          echo "Generated version: $VERSION"
+          mvn -f maven/pom.xml versions:set \
+            -P deploy-desktop \
+            -DnewVersion=${VERSION}-linux \
+            -DremoveSnapshot=true
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
-        - name: Publish to Maven Central
-          run: |
-            mvn -f maven/pom.xml clean deploy \
-              -P deploy-desktop \
-              -Ddesktop.jar.name=$(ls maven/*.jar | xargs basename) \
-              --batch-mode \
-              -DskipTests
-          env:
-            MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
-            MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
-            MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Publish to Maven Central
+        run: |
+          mvn -f maven/pom.xml clean deploy \
+            -P deploy-desktop \
+            -Ddesktop.jar.name=$(ls maven/*.jar | xargs basename) \
+            --batch-mode \
+            -DskipTests
+        env:
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
   build-macos:
     runs-on: macos-latest
