@@ -3,7 +3,7 @@ name: Build Android AAR
 on:
   workflow_dispatch:
   push:
-    branches: [ feat/ooniprobe-ffi-kotlin ]
+    branches: [ 'feat/**' ]
 
 jobs:
   build-android:
@@ -87,9 +87,10 @@ jobs:
               VERSION="${SHORT_SHA}"
             fi
             echo "Generated version: $VERSION"
+            sed -i 's/@ARTIFACT_ID@/passport-android/' maven/pom.xml
             mvn -f maven/pom.xml versions:set \
               -P deploy-android \
-              -DnewVersion=${VERSION}-android \
+              -DnewVersion=${VERSION} \
               -DremoveSnapshot=true
           env:
             MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

@@ -6,7 +6,7 @@
 
 
 	<groupId>org.ooni</groupId>
-	<artifactId>passport</artifactId>
+	<artifactId>@ARTIFACT_ID@</artifactId>
 	<version>@VERSION@</version>
 	<packaging>pom</packaging>
 
