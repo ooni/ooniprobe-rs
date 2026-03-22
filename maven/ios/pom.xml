@@ -14,7 +14,7 @@
     <groupId>org.ooni</groupId>
     <artifactId>ooniprobe-passport-ios</artifactId>
     <version>1.0.0</version>
-    <packaging>zip</packaging>
+    <packaging>pom</packaging>
 
     <name>ooniprobe-passport-ios</name>
     <description>OONI Probe Passport Library for iOS</description>
