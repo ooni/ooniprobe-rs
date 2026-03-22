@@ -17,6 +17,31 @@
 
     <name>ooniprobe-passport-ios</name>
     <description>OONI Probe Passport Library for iOS</description>
+    <url>https://github.com/ooni/ooniprobe-rs</url>
+
+    <licenses>
+        <license>
+            <name>The 3-Clause BSD License</name>
+            <url>https://opensource.org/licenses/BSD-3-Clause</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Mehul Gulati</name>
+            <email>mehul@openobservatory.org</email>
+            <roles>
+                <role>Core developer</role>
+            </roles>
+            <timezone>Asia/Kolkata</timezone>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://github.com/ooni/ooniprobe-rs</url>
+        <connection>https://github.com/ooni/ooniprobe-rs.git</connection>
+    </scm>
 
     <properties>
         <ios.xcframework.name>ooniprobe-passport.xcframework.zip</ios.xcframework.name>
