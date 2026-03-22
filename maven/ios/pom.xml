@@ -12,11 +12,11 @@
     </parent>
 
     <groupId>org.ooni</groupId>
-    <artifactId>ooniprobe-passport-ios</artifactId>
+    <artifactId>passport-ios</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>ooniprobe-passport-ios</name>
+    <name>passport-ios</name>
     <description>OONI Probe Passport Library for iOS</description>
     <url>https://github.com/ooni/ooniprobe-rs</url>
 

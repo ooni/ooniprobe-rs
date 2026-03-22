@@ -12,11 +12,11 @@
     </parent>
 
     <groupId>org.ooni</groupId>
-    <artifactId>ooniprobe-passport-android</artifactId>
+    <artifactId>passport-android</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>ooniprobe-passport-android</name>
+    <name>passport-android</name>
     <description>OONI Probe Passport Library for Android</description>
     <url>https://github.com/ooni/ooniprobe-rs</url>
 
