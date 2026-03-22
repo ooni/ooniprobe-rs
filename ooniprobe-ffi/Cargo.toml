@@ -9,9 +9,8 @@ name = "uniffi_ooniprobe"
 
 [dependencies]
 uniffi = { version = "0.28", features = ["tokio"] }
-ooniauth-core = { git = "https://github.com/ooni/userauth", rev = "ad51baf" }
+ooniauth-core = { git = "https://github.com/ooni/userauth", branch = "mu/fix-determinism" }
 cmz = {workspace = true}
-postcard = { version = "1", features = ["alloc"] }
 sha2 = "0.10.9"
 ooniprobe-services = { path = "../ooniprobe-services" }
 hex = {workspace = true}
