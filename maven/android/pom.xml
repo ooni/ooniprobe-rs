@@ -7,7 +7,6 @@
     <parent>
         <groupId>org.ooni</groupId>
         <artifactId>ooniprobe-passport</artifactId>
-        <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
