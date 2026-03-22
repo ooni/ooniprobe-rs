@@ -70,6 +70,8 @@ jobs:
       - name: Set Project Version
         working-directory: maven/desktop
         run: |
+          ARTIFACT_ID="passport-desktop-linux"
+
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
@@ -77,6 +79,8 @@ jobs:
             VERSION="${SHORT_SHA}"
           fi
           echo "Generated version: $VERSION"
+
+          sed -i "s|\$ARTIFACT_ID|${ARTIFACT_ID}|g" pom.xml
           
           mvn versions:set \
             -DnewVersion=${VERSION} \
@@ -89,6 +93,7 @@ jobs:
         run: |
           mvn clean deploy \
             -Ddesktop.jar.name=$(ls *.jar | xargs basename) \
+            -Ddesktop.classifier=linux \
             --batch-mode \
             -DskipTests
         env:
@@ -156,6 +161,8 @@ jobs:
       - name: Set Project Version
         working-directory: maven/desktop
         run: |
+          ARTIFACT_ID="passport-desktop-macos"
+          
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
@@ -163,6 +170,8 @@ jobs:
             VERSION="${SHORT_SHA}"
           fi
           echo "Generated version: $VERSION"
+
+          sed -i "s|\$ARTIFACT_ID|${ARTIFACT_ID}|g" pom.xml
 
           mvn versions:set \
             -DnewVersion=${VERSION} \
@@ -175,6 +184,7 @@ jobs:
         run: |
           mvn clean deploy \
             -Ddesktop.jar.name=$(ls *.jar | xargs basename) \
+            -Ddesktop.classifier=macos \
             --batch-mode \
             -DskipTests
         env:
@@ -242,6 +252,8 @@ jobs:
       - name: Set Project Version
         working-directory: maven/desktop
         run: |
+          ARTIFACT_ID="passport-desktop-windows"
+
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
@@ -249,9 +261,10 @@ jobs:
             VERSION="${SHORT_SHA}"
           fi
           echo "Generated version: $VERSION"
-          
+
+          sed -i "s|\$ARTIFACT_ID|${ARTIFACT_ID}|g" pom.xml
+
           mvn versions:set \
-            -P deploy-desktop \
             -DnewVersion=${VERSION} \
             -DremoveSnapshot=true
         env:
@@ -262,6 +275,7 @@ jobs:
         run: |
           mvn clean deploy \
             -Ddesktop.jar.name=$(ls *.jar | xargs basename) \
+            -Ddesktop.classifier=windows \
             --batch-mode \
             -DskipTests
         env:

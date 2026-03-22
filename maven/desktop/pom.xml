@@ -12,11 +12,11 @@
     </parent>
 
     <groupId>org.ooni</groupId>
-    <artifactId>ooniprobe-passport-desktop</artifactId>
+    <artifactId>$ARTIFACT_ID</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>ooniprobe-passport-desktop</name>
+    <name>passport-desktop</name>
     <description>OONI Probe Passport Library for Desktop</description>
     <url>https://github.com/ooni/ooniprobe-rs</url>
 
