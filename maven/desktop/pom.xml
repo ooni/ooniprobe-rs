@@ -12,13 +12,15 @@
     </parent>
 
     <artifactId>ooniprobe-passport-desktop</artifactId>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <n>ooniprobe-passport-desktop</n>
+    <name>ooniprobe-passport-desktop</name>
     <description>OONI Probe Passport Library for Desktop</description>
 
     <properties>
         <desktop.jar.name>ooniprobe-passport.jar</desktop.jar.name>
+        <project.artifact.file>${project.basedir}/${desktop.jar.name}</project.artifact.file>
     </properties>
 
     <build>
@@ -51,7 +53,7 @@
                         <configuration>
                             <artifacts>
                                 <artifact>
-                                    <file>${project.basedir}/${desktop.jar.name}</file>
+                                    <file>${project.artifact.file}</file>
                                     <type>jar</type>
                                 </artifact>
                             </artifacts>
