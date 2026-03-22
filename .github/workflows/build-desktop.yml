@@ -65,9 +65,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: desktop-linux
-          path: maven
+          path: maven/desktop
 
       - name: Set Project Version
+        working-directory: maven/desktop
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
@@ -76,19 +77,18 @@ jobs:
             VERSION="${SHORT_SHA}"
           fi
           echo "Generated version: $VERSION"
-          sed -i 's/@ARTIFACT_ID@/passport-linux/' maven/pom.xml
-          mvn -f maven/pom.xml versions:set \
-            -P deploy-desktop \
+          
+          mvn versions:set \
             -DnewVersion=${VERSION} \
             -DremoveSnapshot=true
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Publish to Maven Central
+        working-directory: maven/desktop
         run: |
-          mvn -f maven/pom.xml clean deploy \
-            -P deploy-desktop \
-            -Ddesktop.jar.name=$(ls maven/*.jar | xargs basename) \
+          mvn clean deploy \
+            -Ddesktop.jar.name=$(ls *.jar | xargs basename) \
             --batch-mode \
             -DskipTests
         env:
@@ -151,9 +151,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: desktop-macos
-          path: maven
+          path: maven/desktop
 
       - name: Set Project Version
+        working-directory: maven/desktop
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
@@ -162,19 +163,18 @@ jobs:
             VERSION="${SHORT_SHA}"
           fi
           echo "Generated version: $VERSION"
-          sed -i 's/@ARTIFACT_ID@/passport-macos/' maven/pom.xml
-          mvn -f maven/pom.xml versions:set \
-            -P deploy-desktop \
+
+          mvn versions:set \
             -DnewVersion=${VERSION} \
             -DremoveSnapshot=true
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Publish to Maven Central
+        working-directory: maven/desktop
         run: |
-          mvn -f maven/pom.xml clean deploy \
-            -P deploy-desktop \
-            -Ddesktop.jar.name=$(ls maven/*.jar | xargs basename) \
+          mvn clean deploy \
+            -Ddesktop.jar.name=$(ls *.jar | xargs basename) \
             --batch-mode \
             -DskipTests
         env:
@@ -237,9 +237,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: desktop-windows
-          path: maven
+          path: maven/desktop
 
       - name: Set Project Version
+        working-directory: maven/desktop
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
@@ -248,8 +249,8 @@ jobs:
             VERSION="${SHORT_SHA}"
           fi
           echo "Generated version: $VERSION"
-          sed -i 's/@ARTIFACT_ID@/passport-windows/' maven/pom.xml
-          mvn -f maven/pom.xml versions:set \
+          
+          mvn versions:set \
             -P deploy-desktop \
             -DnewVersion=${VERSION} \
             -DremoveSnapshot=true
@@ -257,10 +258,10 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Publish to Maven Central
+        working-directory: maven/desktop
         run: |
-          mvn -f maven/pom.xml clean deploy \
-            -P deploy-desktop \
-            -Ddesktop.jar.name=$(ls maven/*.jar | xargs basename) \
+          mvn clean deploy \
+            -Ddesktop.jar.name=$(ls *.jar | xargs basename) \
             --batch-mode \
             -DskipTests
         env:
