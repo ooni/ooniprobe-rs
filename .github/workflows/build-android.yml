@@ -25,12 +25,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
-        id: setup-ndk
-        with:
-          ndk-version: r27d
-          add-to-path: true
+      - name: Install Android NDK (manual)
+        run: |
+          sdkmanager "ndk;27.0.12077973"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
 
       - name: Install cargo-ndk
         run: |
@@ -38,8 +36,6 @@ jobs:
 
       - name: Build for Android
         run: make android
-        env:
-          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
       - name: Upload AAR Artifact
         uses: actions/upload-artifact@v6
@@ -76,9 +72,10 @@ jobs:
           uses: actions/download-artifact@v4
           with:
             name: ooniprobe-aar
-            path: maven
+            path: maven/android
 
         - name: Set Project Version
+          working-directory: maven/android
           run: |
             if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
               VERSION="${GITHUB_REF_NAME#v}"
@@ -87,19 +84,18 @@ jobs:
               VERSION="${SHORT_SHA}"
             fi
             echo "Generated version: $VERSION"
-            sed -i 's/@ARTIFACT_ID@/passport-android/' maven/pom.xml
-            mvn -f maven/pom.xml versions:set \
-              -P deploy-android \
+            
+            mvn versions:set \
               -DnewVersion=${VERSION} \
               -DremoveSnapshot=true
           env:
             MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
         - name: Publish to Maven Central
+          working-directory: maven/android
           run: |
-            mvn -f maven/pom.xml clean deploy \
-              -P deploy-android \
-              -Dandroid.aar.name=$(ls maven/*.aar | xargs basename) \
+            mvn clean deploy \
+              -Dandroid.aar.name=$(ls *.aar | xargs basename) \
               --batch-mode \
               -DskipTests
           env:
