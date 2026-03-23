@@ -76,18 +76,27 @@ jobs:
               VERSION="${SHORT_SHA}"
             fi
             echo "Generated version: $VERSION"
-            
+
             mvn versions:set \
               -DnewVersion=${VERSION} \
               -DremoveSnapshot=true
           env:
             MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
+        - name: Generate Podspec
+          working-directory: maven/ios
+          run: |
+            VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+            sed "s/@VERSION@/${VERSION}/g" passport-template.podspec > passport.podspec
+            echo "Generated podspec with version: $VERSION"
+            cat passport.podspec
+
         - name: Publish to Maven Central
           working-directory: maven/ios
           run: |
             mvn clean deploy \
               -Dios.xcframework.name=$(ls *.zip | xargs basename) \
+              -Dios.podspec.file=${PWD}/passport.podspec \
               --batch-mode \
               -DskipTests
           env:
