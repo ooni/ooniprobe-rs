@@ -22,7 +22,7 @@ jobs:
       - name: Upload XCFramework Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ooniProbe.xcframework
+          name: passport.xcframework
           path: ios/ooniProbe.xcframework
 
       - name: Upload Swift Bindings
@@ -59,8 +59,12 @@ jobs:
         - name: Download XCFramework
           uses: actions/download-artifact@v4
           with:
-            name: ooniProbe.xcframework
+            name: passport.xcframework
             path: maven/ios
+
+        - name: Zip XCFramework
+          working-directory: maven/ios
+          run: zip -r passport.xcframework.zip passport.xcframework
 
         - name: Set Project Version
           working-directory: maven/ios
