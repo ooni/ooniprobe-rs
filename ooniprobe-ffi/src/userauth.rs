@@ -1,6 +1,6 @@
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
-use bincode::{self, Options};
+use bincode;
 use cmz::*;
 use curve25519_dalek::{ristretto::RistrettoPoint as G, RistrettoPoint};
 use ooniauth_core::registration::UserAuthCredential;
@@ -12,10 +12,6 @@ use crate::client::build_client;
 use crate::errors::OoniError;
 use crate::HttpResponse;
 use ooniauth_core::PublicParameters;
-
-const MAX_PUBLIC_PARAMS_SIZE: u64 = 64 * 1024;
-const MAX_CREDENTIAL_SIZE: u64 = 64 * 1024;
-const MAX_REPLY_SIZE: u64 = 64 * 1024;
 
 #[derive(Debug)]
 pub struct ProbeIDResult {
@@ -69,22 +65,12 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, OoniError> {
 fn decode_public_params(public_params: &str) -> Result<PublicParameters, OoniError> {
     cmz_group_init(G::hash_from_bytes::<Sha512>(b"CMZ Generator A"));
     let raw = b64_decode(public_params)?;
-    bincode::DefaultOptions::new()
-        .with_limit(MAX_PUBLIC_PARAMS_SIZE)
-        .with_fixint_encoding()
-        .allow_trailing_bytes()
-        .deserialize(&raw)
-        .map_err(Into::into)
+    bincode::deserialize(&raw).map_err(Into::into)
 }
 
 fn decode_credential(credential: &str) -> Result<UserAuthCredential, OoniError> {
     let cred_bytes = b64_decode(credential)?;
-    bincode::DefaultOptions::new()
-        .with_limit(MAX_CREDENTIAL_SIZE)
-        .with_fixint_encoding()
-        .allow_trailing_bytes()
-        .deserialize(&cred_bytes)
-        .map_err(Into::into)
+    bincode::deserialize(&cred_bytes).map_err(Into::into)
 }
 
 fn digest_point(point: RistrettoPoint) -> [u8; 32] {
@@ -162,11 +148,7 @@ pub fn userauth_register(
     let resp: RegistrationResponse = serde_json::from_str(body_text)?;
 
     let reply_bytes = b64_decode(&resp.credential_sign_response)?;
-    let reply = bincode::DefaultOptions::new()
-        .with_limit(MAX_REPLY_SIZE)
-        .with_fixint_encoding()
-        .allow_trailing_bytes()
-        .deserialize::<ooniauth_core::registration::open_registration::Reply>(&reply_bytes)?;
+    let reply = bincode::deserialize::<ooniauth_core::registration::open_registration::Reply>(&reply_bytes)?;
 
     // handle API response in user state
     user_state.handle_response(reg_state, reply)?;
@@ -261,11 +243,7 @@ pub fn userauth_submit(
     };
 
     let reply_bytes = b64_decode(&submit_b64)?;
-    let reply = bincode::DefaultOptions::new()
-        .with_limit(MAX_REPLY_SIZE)
-        .with_fixint_encoding()
-        .allow_trailing_bytes()
-        .deserialize::<ooniauth_core::submit::submit::Reply>(&reply_bytes)?;
+    let reply = bincode::deserialize::<ooniauth_core::submit::submit::Reply>(&reply_bytes)?;
 
     // handle API response in user state
     user_state.handle_submit_response(submit_state, reply)?;
@@ -297,8 +275,8 @@ mod tests {
     fn userauth_register_works_with_public_params() {
         let url = format!("{BASE_URL}/api/v1/sign_credential");
 
-        let public_params = "ASAAAAAAAAAAaBoSmSenkROffQvFETMO6MDD5LwxxxD7hfvFrlPv7XIBIAAAAAAAAAAWEktR78DA11bL4SgGPQV3VxeMqbcgE6oXF1CSL4A/JQMAAAAAAAAAIAAAAAAAAACap5+DGII+KNQB7vWB8Cttav7ADisKeRdktfYjXISeSiAAAAAAAAAAhBEiHB7s8COTd4hnoNx1Ouhzu8NFMzA5lS8Lp7wKIiggAAAAAAAAAMJnquClIeYM+Vm7uPq5vVAmkzQOVfG7OoeUFB7QjMtV";
-        let manifest_version = "3vwveZ4amAz05jqz34w5MQdkOwD03tO8";
+        let public_params = "AYAWz7F8oKPtK+mHf/RJw2kBcQ+r5gT81HHsiM+3ZEJQAUyrROFBhwftdH6IJV69nYHy3bRuHmc27BmsJx966p80AwAAAAAAAABc8OIsTyiGCSjp3xT0rvevfKX6Qv2rg//nn9RcjBsPKzoQNZdMymjjkiOAYUxg9WgfCxN/lJvn6hcLt4a+MrJXcgXPtzlDa8cvtauhi6Um4THT+h4L/0zW3AxfmZTVw1Q=";
+        let manifest_version = "DJF88g0blInW8uw4zodNNZkdOd3UcXAx";
 
         let result =
             userauth_register(url, public_params.to_string(), manifest_version.to_string())
@@ -322,8 +300,8 @@ mod tests {
 
     #[test]
     fn userauth_submit_works_with_mock_measurement() {
-        let public_params = "ASAAAAAAAAAAaBoSmSenkROffQvFETMO6MDD5LwxxxD7hfvFrlPv7XIBIAAAAAAAAAAWEktR78DA11bL4SgGPQV3VxeMqbcgE6oXF1CSL4A/JQMAAAAAAAAAIAAAAAAAAACap5+DGII+KNQB7vWB8Cttav7ADisKeRdktfYjXISeSiAAAAAAAAAAhBEiHB7s8COTd4hnoNx1Ouhzu8NFMzA5lS8Lp7wKIiggAAAAAAAAAMJnquClIeYM+Vm7uPq5vVAmkzQOVfG7OoeUFB7QjMtV".to_string();
-        let manifest_version = "3vwveZ4amAz05jqz34w5MQdkOwD03tO8".to_string();
+        let public_params = "AYAWz7F8oKPtK+mHf/RJw2kBcQ+r5gT81HHsiM+3ZEJQAUyrROFBhwftdH6IJV69nYHy3bRuHmc27BmsJx966p80AwAAAAAAAABc8OIsTyiGCSjp3xT0rvevfKX6Qv2rg//nn9RcjBsPKzoQNZdMymjjkiOAYUxg9WgfCxN/lJvn6hcLt4a+MrJXcgXPtzlDa8cvtauhi6Um4THT+h4L/0zW3AxfmZTVw1Q=".to_string();
+        let manifest_version = "DJF88g0blInW8uw4zodNNZkdOd3UcXAx".to_string();
 
         let open_url = format!("{BASE_URL}/report");
         let report_payload = serde_json::json!({
