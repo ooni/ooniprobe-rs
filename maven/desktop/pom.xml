@@ -12,7 +12,7 @@
     </parent>
 
     <groupId>org.ooni</groupId>
-    <artifactId>$ARTIFACT_ID</artifactId>
+    <artifactId>ARTIFACT_ID</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 

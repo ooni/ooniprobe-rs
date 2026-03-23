@@ -70,7 +70,7 @@ jobs:
       - name: Set Project Version
         working-directory: maven/desktop
         run: |
-          ARTIFACT_ID="passport-desktop-linux"
+          ARTIFACT_ID="passport-linux"
 
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
@@ -80,7 +80,7 @@ jobs:
           fi
           echo "Generated version: $VERSION"
 
-          sed -i "s|\$ARTIFACT_ID|${ARTIFACT_ID}|g" pom.xml
+          sed -i "s|ARTIFACT_ID|${ARTIFACT_ID}|g" pom.xml
           
           mvn versions:set \
             -DnewVersion=${VERSION} \
@@ -161,7 +161,7 @@ jobs:
       - name: Set Project Version
         working-directory: maven/desktop
         run: |
-          ARTIFACT_ID="passport-desktop-macos"
+          ARTIFACT_ID="passport-macos"
           
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
@@ -171,7 +171,7 @@ jobs:
           fi
           echo "Generated version: $VERSION"
 
-          sed -i "s|\$ARTIFACT_ID|${ARTIFACT_ID}|g" pom.xml
+          sed -i "s|ARTIFACT_ID|${ARTIFACT_ID}|g" pom.xml
 
           mvn versions:set \
             -DnewVersion=${VERSION} \
@@ -252,7 +252,7 @@ jobs:
       - name: Set Project Version
         working-directory: maven/desktop
         run: |
-          ARTIFACT_ID="passport-desktop-windows"
+          ARTIFACT_ID="passport-windows"
 
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
@@ -262,7 +262,7 @@ jobs:
           fi
           echo "Generated version: $VERSION"
 
-          sed -i "s|\$ARTIFACT_ID|${ARTIFACT_ID}|g" pom.xml
+          sed -i "s|ARTIFACT_ID|${ARTIFACT_ID}|g" pom.xml
 
           mvn versions:set \
             -DnewVersion=${VERSION} \
