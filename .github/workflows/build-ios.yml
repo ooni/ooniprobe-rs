@@ -87,8 +87,9 @@ jobs:
         working-directory: maven/ios
         run: |
           VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          sed "s/@VERSION@/${VERSION}/g" passport-template.podspec > passport.podspec
-          echo "Generated podspec with version: $VERSION"
+          RELEASE_VERSION="0.0.1+${VERSION}"
+          sed -e "s/@VERSION@/${VERSION}/g" -e "s/@RELEASE_VERSION@/${RELEASE_VERSION}/g" passport-template.podspec > passport.podspec
+          echo "Generated podspec with version: $VERSION, release version: $RELEASE_VERSION"
           cat passport.podspec
 
       - name: Publish to Maven Central

@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name = "passport"
-  s.version = "@VERSION@"
+  s.version = "@RELEASE_VERSION@"
   s.summary = "OONI Probe Passport Library for iOS"
   s.author = "Mehul Gulati"
   s.homepage = "https://github.com/ooni/ooniprobe-rs"
