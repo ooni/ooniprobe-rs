@@ -1,10 +1,8 @@
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use bincode;
-use cmz::*;
 use curve25519_dalek::{ristretto::RistrettoPoint as G, RistrettoPoint};
 use ooniauth_core::registration::UserAuthCredential;
-use rand;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
 
@@ -63,7 +61,6 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, OoniError> {
 }
 
 fn decode_public_params(public_params: &str) -> Result<PublicParameters, OoniError> {
-    cmz_group_init(G::hash_from_bytes::<Sha512>(b"CMZ Generator A"));
     let raw = b64_decode(public_params)?;
     bincode::deserialize(&raw).map_err(Into::into)
 }
@@ -148,7 +145,9 @@ pub fn userauth_register(
     let resp: RegistrationResponse = serde_json::from_str(body_text)?;
 
     let reply_bytes = b64_decode(&resp.credential_sign_response)?;
-    let reply = bincode::deserialize::<ooniauth_core::registration::open_registration::Reply>(&reply_bytes)?;
+    let reply = bincode::deserialize::<ooniauth_core::registration::open_registration::Reply>(
+        &reply_bytes,
+    )?;
 
     // handle API response in user state
     user_state.handle_response(reg_state, reply)?;
@@ -275,8 +274,8 @@ mod tests {
     fn userauth_register_works_with_public_params() {
         let url = format!("{BASE_URL}/api/v1/sign_credential");
 
-        let public_params = "AYAWz7F8oKPtK+mHf/RJw2kBcQ+r5gT81HHsiM+3ZEJQAUyrROFBhwftdH6IJV69nYHy3bRuHmc27BmsJx966p80AwAAAAAAAABc8OIsTyiGCSjp3xT0rvevfKX6Qv2rg//nn9RcjBsPKzoQNZdMymjjkiOAYUxg9WgfCxN/lJvn6hcLt4a+MrJXcgXPtzlDa8cvtauhi6Um4THT+h4L/0zW3AxfmZTVw1Q=";
-        let manifest_version = "DJF88g0blInW8uw4zodNNZkdOd3UcXAx";
+        let public_params = "ASj7JbvUcPmoAez9FsTQyvX7qgy2oatK134seX+6rMlZAZgmpigFclXK2VlIwXhBsyVVNSaZv0UINfrKLkV+/fsEAwAAAAAAAABMHByM3xinwWavgTQGEoRQWiwl/oOmskDOQ0vbiuV4Lfji8PTSy1N5SgOGDw+LxC9qnB9zN5G8ARZShGxgNPs9iHiUNJejm9Xexg3OfW0xRbef9MrpyyjsPNeQUfEkul4=";
+        let manifest_version = "4s5hkqAEJ6HAygtGufsZRoRDx7GSLE7A";
 
         let result =
             userauth_register(url, public_params.to_string(), manifest_version.to_string())
@@ -300,8 +299,8 @@ mod tests {
 
     #[test]
     fn userauth_submit_works_with_mock_measurement() {
-        let public_params = "AYAWz7F8oKPtK+mHf/RJw2kBcQ+r5gT81HHsiM+3ZEJQAUyrROFBhwftdH6IJV69nYHy3bRuHmc27BmsJx966p80AwAAAAAAAABc8OIsTyiGCSjp3xT0rvevfKX6Qv2rg//nn9RcjBsPKzoQNZdMymjjkiOAYUxg9WgfCxN/lJvn6hcLt4a+MrJXcgXPtzlDa8cvtauhi6Um4THT+h4L/0zW3AxfmZTVw1Q=".to_string();
-        let manifest_version = "DJF88g0blInW8uw4zodNNZkdOd3UcXAx".to_string();
+        let public_params = "ASj7JbvUcPmoAez9FsTQyvX7qgy2oatK134seX+6rMlZAZgmpigFclXK2VlIwXhBsyVVNSaZv0UINfrKLkV+/fsEAwAAAAAAAABMHByM3xinwWavgTQGEoRQWiwl/oOmskDOQ0vbiuV4Lfji8PTSy1N5SgOGDw+LxC9qnB9zN5G8ARZShGxgNPs9iHiUNJejm9Xexg3OfW0xRbef9MrpyyjsPNeQUfEkul4=".to_string();
+        let manifest_version = "4s5hkqAEJ6HAygtGufsZRoRDx7GSLE7A".to_string();
 
         let open_url = format!("{BASE_URL}/report");
         let report_payload = serde_json::json!({
