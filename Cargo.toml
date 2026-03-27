@@ -3,7 +3,8 @@ members = [
     "ooniprobe",
     "ooniprobe-core",
     "ooniprobe-services",
-    "ooniprobe-userauth",
+    # "ooniprobe-userauth",
+    "ooniprobe-network",
     #"ooniprobe-experiments",
 ]
 resolver = "2"
@@ -23,7 +24,10 @@ thiserror = "2.0.12"
 serde = { version = "1.0.216", features = ["serde_derive"] }
 serde_json = "1.0.133"
 serde_derive = "1.0"
+rustls = { version = "0.23.37", features = ["ring"] }
 tokio = { version = "1.42.0", features = ["full"] }
+tokio-rustls = "0.26.4"
+webpki-roots = "1.0.6"
 url = "2.5.4"
 bytes = "1.9.0"
 http-body-util = "0.1.2"
