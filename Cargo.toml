@@ -3,7 +3,7 @@ members = [
     "ooniprobe",
     "ooniprobe-core",
     "ooniprobe-services",
-    "ooniprobe-userauth",
+    # "ooniprobe-userauth",
     "ooniprobe-network",
     #"ooniprobe-experiments",
 ]
