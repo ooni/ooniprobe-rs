@@ -41,6 +41,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <ios.xcframework.name>ooniprobe-passport.xcframework.zip</ios.xcframework.name>
         <project.artifact.file>${project.basedir}/${ios.xcframework.name}</project.artifact.file>
+        <ios.podspec.file>${project.basedir}/passport.podspec</ios.podspec.file>
     </properties>
 
     <build>
@@ -61,6 +62,10 @@
                                 <artifact>
                                     <file>${project.artifact.file}</file>
                                     <type>zip</type>
+                                </artifact>
+                                <artifact>
+                                    <file>${ios.podspec.file}</file>
+                                    <type>podspec</type>
                                 </artifact>
                             </artifacts>
                         </configuration>
