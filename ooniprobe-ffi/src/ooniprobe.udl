@@ -29,7 +29,7 @@ namespace ooniprobe {
         string probe_cc,
         string probe_asn,
         string manifest_version,
-        u32 age
+        u32 emission_day
     );
 
     [Throws=OoniError]
@@ -69,6 +69,7 @@ dictionary HttpResponse {
 dictionary CredentialResult {
     HttpResponse response;
     string?   credential;
+    u32?    emission_day;
 };
 
 dictionary ProbeIDResult {

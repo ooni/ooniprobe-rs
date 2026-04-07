@@ -11,7 +11,7 @@ name = "uniffi_ooniprobe"
 uniffi = { version = "0.28", features = ["tokio"] }
 ooniauth-core = { workspace = true }
 cmz = { workspace = true }
-sha2 = "0.10.9"
+sha2 = {workspace = true}
 ooniprobe-services = { path = "../ooniprobe-services" }
 hex = {workspace = true}
 bincode = { workspace = true }
@@ -26,13 +26,13 @@ tokio = { workspace = true }
 curve25519-dalek = { version = "4", features = ["digest", "group", "rand_core", "serde"] }
 rand = { workspace = true }
 time = { workspace = true }
-thiserror = "1.0"
+thiserror = {workspace = true}
+
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"] }
 
 [target.'cfg(not(target_os = "ios"))'.dependencies]
 wreq = { workspace = true }
 
 [target.'cfg(target_os = "ios")'.dependencies]
 reqwest = { workspace = true }
-
-[build-dependencies]
-uniffi = { version = "0.28", features = ["build"] }

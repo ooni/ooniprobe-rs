@@ -19,6 +19,7 @@ pub struct ProbeIDResult {
 #[derive(Debug)]
 pub struct CredentialResult {
     pub credential: Option<String>,
+    pub emission_day: Option<u32>,
     pub response: HttpResponse,
 }
 
@@ -31,7 +32,7 @@ struct RegistrationPayload {
 #[derive(Serialize, Deserialize)]
 struct RegistrationResponse {
     credential_sign_response: String,
-    emission_day: i32,
+    emission_day: u32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -134,6 +135,7 @@ pub fn userauth_register(
     if response.status_code < 200 || response.status_code >= 300 {
         return Ok(CredentialResult {
             credential: None,
+            emission_day: None,
             response: response,
         });
     }
@@ -163,6 +165,7 @@ pub fn userauth_register(
 
     Ok(CredentialResult {
         credential: Some(b64_encode(&cred_bytes)),
+        emission_day: Some(resp.emission_day),
         response,
     })
 }
@@ -175,7 +178,7 @@ pub fn userauth_submit(
     probe_cc: String,
     probe_asn: String,
     manifest_version: String,
-    age: u32,
+    emission_day: u32
 ) -> Result<CredentialResult, OoniError> {
     // initialize the user state with public params
     let pp = decode_public_params(&public_params)?;
@@ -184,7 +187,7 @@ pub fn userauth_submit(
     let credential = decode_credential(&credential)?;
     user_state.set_credential(credential.clone());
 
-    let age_range = age.saturating_sub(30)..age.saturating_add(1);
+    let age_range = emission_day.saturating_sub(30)..emission_day.saturating_add(1);
     let measurement_count_range = 0..3000;
 
     // prepare submission request
@@ -225,6 +228,7 @@ pub fn userauth_submit(
     if response.status_code < 200 || response.status_code >= 300 {
         return Ok(CredentialResult {
             credential: None,
+            emission_day: None,
             response: response,
         });
     }
@@ -237,6 +241,7 @@ pub fn userauth_submit(
     let Some(submit_b64) = resp.submit_response else {
         return Ok(CredentialResult {
             credential: None,
+            emission_day: None,
             response: response,
         });
     };
@@ -258,6 +263,7 @@ pub fn userauth_submit(
 
     Ok(CredentialResult {
         credential: Some(b64_encode(&cred_bytes)),
+        emission_day: None,
         response,
     })
 }
@@ -330,7 +336,6 @@ mod tests {
             serde_json::from_str(open_resp.body_text.as_ref().unwrap()).unwrap();
 
         let report_id = open_body["report_id"].as_str().unwrap().to_string();
-        println!("Opened Report ID: {}", report_id);
 
         let reg_result = userauth_register(
             format!("{BASE_URL}/api/v1/sign_credential"),
@@ -340,13 +345,12 @@ mod tests {
         .expect("Registration failed");
 
         let credential = reg_result.credential.expect("No credential returned");
-        println!("Registered probe with credential: {}", credential);
+        let emission_day = reg_result.emission_day.expect("No emission day returned");
 
         let probe_cc = "IT".to_string();
         let probe_asn = "AS117".to_string();
         let probe_id = get_probe_id(credential.clone(), probe_cc.clone(), probe_asn.clone())
             .expect("No probe id returned");
-        println!("Probe ID for measurement: {}", probe_id.probe_id);
 
         let measurement_content = serde_json::json!({
             "id": "bdd20d7a-bba5-40dd-a111-9863d7908572",
@@ -372,7 +376,7 @@ mod tests {
             probe_cc.clone(),
             probe_asn.clone(),
             manifest_version,
-            2461098,
+            emission_day,
         )
         .expect("Submission call failed");
 

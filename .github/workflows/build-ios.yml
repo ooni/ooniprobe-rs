@@ -87,7 +87,13 @@ jobs:
         working-directory: maven/ios
         run: |
           VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          RELEASE_VERSION="0.0.1+${VERSION}"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            RELEASE_VERSION="${VERSION}"
+          else
+            RELEASE_VERSION="0.0.1+${VERSION}" 
+          fi
+
           sed -e "s/@VERSION@/${VERSION}/g" -e "s/@RELEASE_VERSION@/${RELEASE_VERSION}/g" passport-template.podspec > passport.podspec
           echo "Generated podspec with version: $VERSION, release version: $RELEASE_VERSION"
           cat passport.podspec

@@ -13,7 +13,7 @@ edition = "2021"
 [workspace.dependencies]
 ooniprobe-experiments = { version = "0.1.0", path = "./ooniprobe-experiments" }
 ooniprobe-services = { version = "0.1.0", path = "./ooniprobe-services" }
-ooniauth-core = { git = "https://github.com/ooni/userauth", branch = "deleteme/temp-release" }
+ooniauth-core = { git = "https://github.com/ooni/userauth" }
 rand = "0.8.5" 
 bincode = "1"
 thiserror = "2.0.12"
@@ -39,14 +39,6 @@ mime = "0.3.17"
 encoding_rs = "0.8.35"
 hex = "0.4.3"
 time = { version = "0.3", features = ["std"] }
-cmz = {  git = "https://github.com/sigma-rs/cmz", branch = "main" }
+cmz = { version = "0.2" }
 curve25519-dalek = { version = "4", features = ["digest", "group", "rand_core", "serde"] }
-
-[patch.crates-io]
-cmz = {  git = "https://github.com/sigma-rs/cmz", branch = "main" }
-cmz-core = { git = "https://github.com/sigma-rs/cmz", branch = "main" }
-cmz-derive = { git = "https://github.com/sigma-rs/cmz", branch = "main" }
-sigma-compiler = { git = "https://github.com/sigma-rs/sigma-compiler", branch = "mu/fix-determinism" }
-sigma-compiler-core = { git = "https://github.com/sigma-rs/sigma-compiler", branch = "mu/fix-determinism" }
-sigma-compiler-derive = { git = "https://github.com/sigma-rs/sigma-compiler", branch = "mu/fix-determinism" }
-sigma-proofs = { git = "https://github.com/sigma-rs/sigma-proofs", branch = "main" }
+sha2 = "0.10.9"
