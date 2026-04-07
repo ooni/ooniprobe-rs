@@ -120,7 +120,9 @@ impl Trace {
 
     /// Record a DNS lookup result.
     pub fn record_dns_lookup(&self, mut obs: DnsLookupResult) {
-        obs.tags.get_or_insert_with(Vec::new).extend_from_slice(&self.0.tags);
+        obs.tags
+            .get_or_insert_with(Vec::new)
+            .extend_from_slice(&self.0.tags);
         let mut guard = self.0.dns_lookups.lock().unwrap();
         if guard.len() < DNS_LOOKUP_BUF * 4 {
             guard.push(obs);
@@ -129,7 +131,9 @@ impl Trace {
 
     /// Record a TCP connect result.
     pub fn record_tcp_connect(&self, mut obs: TcpConnectResult) {
-        obs.tags.get_or_insert_with(Vec::new).extend_from_slice(&self.0.tags);
+        obs.tags
+            .get_or_insert_with(Vec::new)
+            .extend_from_slice(&self.0.tags);
         let mut guard = self.0.tcp_connects.lock().unwrap();
         if guard.len() < TCP_CONNECT_BUF * 4 {
             guard.push(obs);
@@ -138,7 +142,9 @@ impl Trace {
 
     /// Record a TLS (or QUIC) handshake result.
     pub fn record_tls_handshake(&self, mut obs: TlsHandshakeResult) {
-        obs.tags.get_or_insert_with(Vec::new).extend_from_slice(&self.0.tags);
+        obs.tags
+            .get_or_insert_with(Vec::new)
+            .extend_from_slice(&self.0.tags);
         let mut guard = self.0.tls_handshakes.lock().unwrap();
         if guard.len() < TLS_HANDSHAKE_BUF * 4 {
             guard.push(obs);
@@ -147,7 +153,9 @@ impl Trace {
 
     /// Record a low-level network I/O event.
     pub fn record_network_event(&self, mut obs: NetworkEvent) {
-        obs.tags.get_or_insert_with(Vec::new).extend_from_slice(&self.0.tags);
+        obs.tags
+            .get_or_insert_with(Vec::new)
+            .extend_from_slice(&self.0.tags);
         let mut guard = self.0.network_events.lock().unwrap();
         if guard.len() < NETWORK_EVENT_BUF * 4 {
             guard.push(obs);
@@ -156,7 +164,9 @@ impl Trace {
 
     /// Record an HTTP request/response pair.
     pub fn record_http_request(&self, mut obs: HttpTransaction) {
-        obs.tags.get_or_insert_with(Vec::new).extend_from_slice(&self.0.tags);
+        obs.tags
+            .get_or_insert_with(Vec::new)
+            .extend_from_slice(&self.0.tags);
         let mut guard = self.0.http_requests.lock().unwrap();
         if guard.len() < HTTP_REQUEST_BUF * 4 {
             guard.push(obs);

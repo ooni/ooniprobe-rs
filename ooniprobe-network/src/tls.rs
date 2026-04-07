@@ -45,14 +45,18 @@ pub fn insecure_tls_config() -> Arc<ClientConfig> {
         }
 
         fn verify_tls12_signature(
-            &self, _msg: &[u8], _cert: &rustls::pki_types::CertificateDer<'_>,
+            &self,
+            _msg: &[u8],
+            _cert: &rustls::pki_types::CertificateDer<'_>,
             _dss: &rustls::DigitallySignedStruct,
         ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
             Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
         }
 
         fn verify_tls13_signature(
-            &self, _msg: &[u8], _cert: &rustls::pki_types::CertificateDer<'_>,
+            &self,
+            _msg: &[u8],
+            _cert: &rustls::pki_types::CertificateDer<'_>,
             _dss: &rustls::DigitallySignedStruct,
         ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
             Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
@@ -103,7 +107,11 @@ impl TracingTlsHandshaker {
 
     /// Create a handshaker with a custom [`ClientConfig`].
     pub fn with_config(config: Arc<ClientConfig>, trace: Trace) -> Self {
-        Self { config, trace, no_tls_verify: false }
+        Self {
+            config,
+            trace,
+            no_tls_verify: false,
+        }
     }
 
     /// Perform a TLS handshake over `stream`.
@@ -170,8 +178,8 @@ impl TracingTlsHandshaker {
             }
             Err(e) => {
                 // Try to classify as rustls vs I/O error.
-                let ooni_err = if let Some(tls_err) = e.get_ref()
-                    .and_then(|e| e.downcast_ref::<rustls::Error>())
+                let ooni_err = if let Some(tls_err) =
+                    e.get_ref().and_then(|e| e.downcast_ref::<rustls::Error>())
                 {
                     OoniError::from_tls(tls_err.clone())
                 } else {

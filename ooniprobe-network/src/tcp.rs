@@ -12,7 +12,7 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 
 use crate::{
-    archival::{NetworkEvent, TcpConnectResult, TcpConnectStatus, NetworkOperation},
+    archival::{NetworkEvent, NetworkOperation, TcpConnectResult, TcpConnectStatus},
     errors::OoniError,
     trace::Trace,
 };
@@ -82,7 +82,7 @@ impl TracingDialer {
     }
 
     /// Convenience: try each address in `addrs` in order, returning the first
-    /// successful connection.  This mirrors Go's `netxlite.DialContext`.
+    /// successful connection
     pub async fn connect_first(
         &self,
         addrs: &[SocketAddr],

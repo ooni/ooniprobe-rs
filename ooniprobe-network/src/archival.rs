@@ -162,12 +162,12 @@ pub struct TcpConnectResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TlsNetwork {
-    TCP,
-    UDP,
+    Tcp,
+    Udp,
 }
 
 /// TlsHandshakeResult: https://github.com/ooni/spec/blob/master/data-formats/df-006-tlshandshake.md
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TlsHandshakeResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<TlsNetwork>,
@@ -203,7 +203,7 @@ pub enum NetworkOperation {
     ReadFrom,
     Write,
     WriteTo,
-    Close // NOTE: addition to ooni/spec
+    Close, // NOTE: addition to ooni/spec
 }
 
 /// NetworkEvent: https://github.com/ooni/spec/blob/master/data-formats/df-008-netevents.md
@@ -232,14 +232,14 @@ pub struct NetworkEvent {
 /// HttpRequest: https://github.com/ooni/spec/blob/master/data-formats/df-001-httpt.md#request
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HttpRequest {
-    url: String,
-    body: MaybeBinaryData,
+    pub url: String,
+    pub body: MaybeBinaryData,
     #[serde(skip_serializing_if = "Option::is_none")]
-    body_is_truncated: Option<bool>,
-    headers_list: Vec<(String, MaybeBinaryData)>,
-    headers: std::collections::HashMap<String, String>,
-    method: String,
-    x_transport: String,
+    pub body_is_truncated: Option<bool>,
+    pub headers_list: Vec<(String, MaybeBinaryData)>,
+    pub headers: std::collections::HashMap<String, String>,
+    pub method: String,
+    pub x_transport: String,
 }
 
 /// HttpResponse: https://github.com/ooni/spec/blob/master/data-formats/df-001-httpt.md#response
@@ -262,7 +262,7 @@ pub struct HttpTransaction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alpn: Option<String>,
     pub failure: Option<String>,
-    pub equest: HttpRequest,
+    pub request: HttpRequest,
     pub response: HttpResponse,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_length: Option<u32>,
