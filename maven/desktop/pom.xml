@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.ooni</groupId>
-    <artifactId>passport-desktop</artifactId>
+    <artifactId>ARTIFACT_ID</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>passport-desktop</name>
+    <name>ARTIFACT_ID</name>
     <description>OONI Probe Passport Library for Desktop</description>
     <url>https://github.com/ooni/ooniprobe-rs</url>
 
