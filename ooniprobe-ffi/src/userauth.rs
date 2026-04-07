@@ -355,6 +355,7 @@ mod tests {
         let measurement_content = serde_json::json!({
             "id": "bdd20d7a-bba5-40dd-a111-9863d7908572",
             "report_id": report_id,
+            "measurement_start_time": "2026-03-31 23:59:58",
             "probe_id": probe_id.probe_id,
             "probe_asn": probe_asn,
             "probe_cc": probe_cc,
