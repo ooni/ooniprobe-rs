@@ -1,6 +1,7 @@
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use bincode;
+use cmz::cmz_group_init;
 use curve25519_dalek::{ristretto::RistrettoPoint as G, RistrettoPoint};
 use ooniauth_core::registration::UserAuthCredential;
 use serde::{Deserialize, Serialize};
@@ -62,6 +63,7 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, OoniError> {
 }
 
 fn decode_public_params(public_params: &str) -> Result<PublicParameters, OoniError> {
+    cmz_group_init(G::hash_from_bytes::<Sha512>(b"CMZ Generator A"));
     let raw = b64_decode(public_params)?;
     bincode::deserialize(&raw).map_err(Into::into)
 }
