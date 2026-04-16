@@ -79,7 +79,6 @@ dictionary HttpResponse {
 dictionary CredentialResult {
     HttpResponse response;
     string?   credential;
-    u32?    emission_day;
 };
 
 dictionary ProbeIDResult {
