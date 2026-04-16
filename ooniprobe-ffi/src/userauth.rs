@@ -62,11 +62,24 @@ struct SubmitMeasurementPayload {
     protocol_version: Option<String>,
 }
 
+// VerificationStatus
+#[derive(Serialize, Deserialize)]
+enum VerificationStatus {
+    #[serde(rename = "verified")]
+    Verified,
+    #[serde(rename = "failed")]
+    Failed,
+    #[serde(rename = "unverified")]
+    Unverified
+}
+
 #[derive(Serialize, Deserialize)]
 struct SubmitMeasurementResponse {
     measurement_uid: Option<String>,
-    is_verified: bool,
+    verification_status: VerificationStatus,
     submit_response: Option<String>,
+    protocol_version: String,
+    error: Option<String>
 }
 
 fn b64_encode(b: &[u8]) -> String {
@@ -318,7 +331,7 @@ mod tests {
         let url = format!("{BASE_URL}/api/v1/sign_credential");
 
         let public_params = "ASj7JbvUcPmoAez9FsTQyvX7qgy2oatK134seX+6rMlZAZgmpigFclXK2VlIwXhBsyVVNSaZv0UINfrKLkV+/fsEAwAAAAAAAABMHByM3xinwWavgTQGEoRQWiwl/oOmskDOQ0vbiuV4Lfji8PTSy1N5SgOGDw+LxC9qnB9zN5G8ARZShGxgNPs9iHiUNJejm9Xexg3OfW0xRbef9MrpyyjsPNeQUfEkul4=";
-        let manifest_version = "4s5hkqAEJ6HAygtGufsZRoRDx7GSLE7A";
+        let manifest_version = "_x7wwWzm2eR9fODDHeOnDyutjCTpT1UI";
 
         let result =
             userauth_register(url, public_params.to_string(), manifest_version.to_string())
@@ -343,7 +356,7 @@ mod tests {
     #[test]
     fn userauth_submit_works_with_mock_measurement() {
         let public_params = "ASj7JbvUcPmoAez9FsTQyvX7qgy2oatK134seX+6rMlZAZgmpigFclXK2VlIwXhBsyVVNSaZv0UINfrKLkV+/fsEAwAAAAAAAABMHByM3xinwWavgTQGEoRQWiwl/oOmskDOQ0vbiuV4Lfji8PTSy1N5SgOGDw+LxC9qnB9zN5G8ARZShGxgNPs9iHiUNJejm9Xexg3OfW0xRbef9MrpyyjsPNeQUfEkul4=".to_string();
-        let manifest_version = "4s5hkqAEJ6HAygtGufsZRoRDx7GSLE7A".to_string();
+        let manifest_version = "_x7wwWzm2eR9fODDHeOnDyutjCTpT1UI".to_string();
 
         let open_url = format!("{BASE_URL}/report");
         let report_payload = serde_json::json!({
@@ -409,7 +422,7 @@ mod tests {
             credential: credential,
             public_params: public_params,
             manifest_version: manifest_version,
-            age_range: ParamRange { min: 0, max: 36000 },
+            age_range: ParamRange { min: 0, max: 2600000 },
             measurement_count_range: ParamRange { min: 0, max: 10000 },
         });
         let submit_result = userauth_submit(
