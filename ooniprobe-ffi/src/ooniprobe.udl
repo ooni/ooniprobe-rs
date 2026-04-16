@@ -23,13 +23,10 @@ namespace ooniprobe {
     [Throws=OoniError]
     CredentialResult userauth_submit(
         string url,
-        string credential,
-        string public_params,
         string content,
         string probe_cc,
         string probe_asn,
-        string manifest_version,
-        u32 emission_day
+        CredentialConfig? credential_config
     );
 
     [Throws=OoniError]
@@ -55,6 +52,19 @@ enum OoniError {
 dictionary KeyValue {
     string key;
     string value;
+};
+
+dictionary ParamRange {
+    u32 min;
+    u32 max;
+};
+
+dictionary CredentialConfig {
+    string credential;
+    string public_params;
+    string manifest_version;
+    ParamRange age_range;
+    ParamRange measurement_count_range;
 };
 
 dictionary HttpResponse {

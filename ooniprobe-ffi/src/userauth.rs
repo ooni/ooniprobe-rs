@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use bincode;
@@ -10,7 +12,22 @@ use sha2::{Digest, Sha256, Sha512};
 use crate::client::build_client;
 use crate::errors::OoniError;
 use crate::HttpResponse;
-use ooniauth_core::PublicParameters;
+use ooniauth_core::{PublicParameters, VERSION};
+
+#[derive(Clone, Debug)]
+pub struct ParamRange {
+    pub min: u32,
+    pub max: u32,
+}
+
+#[derive(Clone, Debug)]
+pub struct CredentialConfig {
+    pub credential: String,
+    pub public_params: String,
+    pub manifest_version: String,
+    pub age_range: ParamRange,
+    pub measurement_count_range: ParamRange,
+}
 
 #[derive(Debug)]
 pub struct ProbeIDResult {
@@ -20,7 +37,6 @@ pub struct ProbeIDResult {
 #[derive(Debug)]
 pub struct CredentialResult {
     pub credential: Option<String>,
-    pub emission_day: Option<u32>,
     pub response: HttpResponse,
 }
 
@@ -40,11 +56,10 @@ struct RegistrationResponse {
 struct SubmitMeasurementPayload {
     format: String,
     content: serde_json::Value,
-    nym: String,
-    zkp_request: String,
-    probe_age_range: (u32, u32),
-    probe_msm_range: (u32, u32),
-    manifest_version: String,
+    nym: Option<String>,
+    zkp_request: Option<String>,
+    manifest_version: Option<String>,
+    protocol_version: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -137,7 +152,6 @@ pub fn userauth_register(
     if response.status_code < 200 || response.status_code >= 300 {
         return Ok(CredentialResult {
             credential: None,
-            emission_day: None,
             response: response,
         });
     }
@@ -167,52 +181,68 @@ pub fn userauth_register(
 
     Ok(CredentialResult {
         credential: Some(b64_encode(&cred_bytes)),
-        emission_day: Some(resp.emission_day),
         response,
     })
 }
 
 pub fn userauth_submit(
     url: String,
-    credential: String,
-    public_params: String,
     content: String,
     probe_cc: String,
     probe_asn: String,
-    manifest_version: String,
-    emission_day: u32
+    credential_config: Option<CredentialConfig>,
 ) -> Result<CredentialResult, OoniError> {
-    // initialize the user state with public params
-    let pp = decode_public_params(&public_params)?;
-    let mut user_state = ooniauth_core::UserState::new(pp);
-
-    let credential = decode_credential(&credential)?;
-    user_state.set_credential(credential.clone());
-
-    let age_range = emission_day.saturating_sub(30)..emission_day.saturating_add(1);
-    let measurement_count_range = 0..3000;
-
-    // prepare submission request
-    let mut rng = rand::thread_rng();
-    let ((submit_request, submit_state), probe_id) = user_state.submit_request(
-        &mut rng,
-        probe_cc.clone(),
-        probe_asn.clone(),
-        age_range.clone(),
-        measurement_count_range.clone(),
-    )?;
-
-    // prepare payload for POST to submit endpoint
     let measurement_content: serde_json::Value = serde_json::from_str(&content)?;
-    let request_bytes = submit_request.as_bytes();
-    let submit_payload = SubmitMeasurementPayload {
-        format: "json".to_string(),
-        content: measurement_content,
-        nym: b64_encode(&probe_id),
-        zkp_request: b64_encode(&request_bytes),
-        probe_age_range: (age_range.start, age_range.end),
-        probe_msm_range: (measurement_count_range.start, measurement_count_range.end),
-        manifest_version,
+    let (submit_payload, auth_state) = match credential_config {
+        Some(config) => {
+            // Initialize user state
+            let pp = decode_public_params(&config.public_params)?;
+            let mut user_state = ooniauth_core::UserState::new(pp);
+
+            let credential = decode_credential(&config.credential)?;
+            user_state.set_credential(credential);
+
+            // Create submit request
+            let mut rng = rand::thread_rng();
+            let ((submit_request, submit_state), probe_id) = user_state.submit_request(
+                &mut rng,
+                probe_cc.clone(),
+                probe_asn.clone(),
+                Range {
+                    start: config.age_range.min,
+                    end: config.age_range.max,
+                },
+                Range {
+                    start: config.measurement_count_range.min,
+                    end: config.measurement_count_range.max,
+                },
+            )?;
+
+            let request_bytes = submit_request.as_bytes();
+
+            let payload = SubmitMeasurementPayload {
+                format: "json".to_string(),
+                content: measurement_content,
+                nym: Some(b64_encode(&probe_id)),
+                zkp_request: Some(b64_encode(&request_bytes)),
+                manifest_version: Some(config.manifest_version),
+                protocol_version: Some(VERSION.to_string()),
+            };
+
+            (payload, Some((user_state, submit_state)))
+        }
+        None => {
+            let payload = SubmitMeasurementPayload {
+                format: "json".to_string(),
+                content: measurement_content,
+                nym: None,
+                zkp_request: None,
+                manifest_version: None,
+                protocol_version: None,
+            };
+
+            (payload, None)
+        }
     };
 
     let json_payload = serde_json::to_string(&submit_payload)?;
@@ -230,10 +260,17 @@ pub fn userauth_submit(
     if response.status_code < 200 || response.status_code >= 300 {
         return Ok(CredentialResult {
             credential: None,
-            emission_day: None,
             response: response,
         });
     }
+
+    // return early if the submission path was without credentials
+    let Some((mut user_state, submit_state)) = auth_state else {
+        return Ok(CredentialResult {
+            credential: None,
+            response,
+        });
+    };
 
     let body_text = response.body_text.as_ref().ok_or_else(|| {
         OoniError::HttpClientError(String::from("Empty response body from server"))
@@ -243,7 +280,6 @@ pub fn userauth_submit(
     let Some(submit_b64) = resp.submit_response else {
         return Ok(CredentialResult {
             credential: None,
-            emission_day: None,
             response: response,
         });
     };
@@ -265,7 +301,6 @@ pub fn userauth_submit(
 
     Ok(CredentialResult {
         credential: Some(b64_encode(&cred_bytes)),
-        emission_day: None,
         response,
     })
 }
@@ -274,7 +309,7 @@ pub fn userauth_submit(
 mod tests {
     use crate::client::{client_post, KeyValue};
     use crate::get_probe_id;
-    use crate::userauth::{userauth_register, userauth_submit};
+    use crate::userauth::{userauth_register, userauth_submit, CredentialConfig, ParamRange};
 
     const BASE_URL: &str = "https://api.dev.ooni.io";
 
@@ -347,7 +382,6 @@ mod tests {
         .expect("Registration failed");
 
         let credential = reg_result.credential.expect("No credential returned");
-        let emission_day = reg_result.emission_day.expect("No emission day returned");
 
         let probe_cc = "IT".to_string();
         let probe_asn = "AS117".to_string();
@@ -371,15 +405,19 @@ mod tests {
         .to_string();
 
         let submit_url = format!("{BASE_URL}/api/v1/submit_measurement/{}", report_id);
+        let credential_config = Some(CredentialConfig {
+            credential: credential,
+            public_params: public_params,
+            manifest_version: manifest_version,
+            age_range: ParamRange { min: 0, max: 36000 },
+            measurement_count_range: ParamRange { min: 0, max: 10000 },
+        });
         let submit_result = userauth_submit(
             submit_url,
-            credential,
-            public_params,
             measurement_content,
             probe_cc.clone(),
             probe_asn.clone(),
-            manifest_version,
-            emission_day,
+            credential_config,
         )
         .expect("Submission call failed");
 
