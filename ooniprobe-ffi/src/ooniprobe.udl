@@ -1,0 +1,86 @@
+namespace ooniprobe {
+   [Throws=OoniError]
+    HttpResponse client_get(
+        string url,
+        sequence<KeyValue> headers,
+        sequence<KeyValue> query
+    );
+
+    [Throws=OoniError]
+    HttpResponse client_post(
+        string url,
+        sequence<KeyValue> headers,
+        string payload
+    );
+
+    [Throws=OoniError]
+    CredentialResult userauth_register(
+        string url,
+        string public_params,
+        string manifest_version
+    );
+
+    [Throws=OoniError]
+    CredentialResult userauth_submit(
+        string url,
+        string content,
+        string probe_cc,
+        string probe_asn,
+        CredentialConfig? credential_config
+    );
+
+    [Throws=OoniError]
+    ProbeIDResult get_probe_id(
+        string credential_b64,
+        string probe_asn,
+        string probe_cc
+    );
+};
+
+[Error]
+enum OoniError {
+    "NullOrInvalidInput",
+    "Base64DecodeError",
+    "BinaryDecodeError",
+    "HttpClientError",
+    "CryptoError",
+    "SerializationError",
+    "InvalidCredential",
+    "Other",
+};
+
+dictionary KeyValue {
+    string key;
+    string value;
+};
+
+dictionary ParamRange {
+    u32 min;
+    u32 max;
+};
+
+dictionary CredentialConfig {
+    string credential;
+    string public_params;
+    string manifest_version;
+    ParamRange age_range;
+    ParamRange measurement_count_range;
+};
+
+dictionary HttpResponse {
+    i32 status_code;
+    string version;
+    sequence<sequence<string>> headers_list_text;
+    sequence<sequence<string>> headers_list_b64_bytes;
+    string? body_text;
+    string? body_b64_bytes;
+};
+
+dictionary CredentialResult {
+    HttpResponse response;
+    string?   credential;
+};
+
+dictionary ProbeIDResult {
+    string probe_id;
+};

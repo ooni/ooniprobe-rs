@@ -1,0 +1,38 @@
+[package]
+name = "ooniprobe-ffi"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+name = "uniffi_ooniprobe"
+
+[dependencies]
+uniffi = { version = "0.28", features = ["tokio"] }
+ooniauth-core = { workspace = true }
+cmz = { workspace = true }
+sha2 = {workspace = true}
+ooniprobe-services = { path = "../ooniprobe-services" }
+hex = {workspace = true}
+bincode = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace =  true }
+wreq = { workspace = true }
+mime = {workspace =  true }
+encoding_rs = {workspace = true }
+bytes = {workspace = true }
+base64 = {workspace = true }
+tokio = { workspace = true }
+curve25519-dalek = { version = "4", features = ["digest", "group", "rand_core", "serde"] }
+rand = { workspace = true }
+time = { workspace = true }
+thiserror = {workspace = true}
+
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"] }
+
+[target.'cfg(not(target_os = "ios"))'.dependencies]
+wreq = { workspace = true }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+reqwest = { workspace = true }
