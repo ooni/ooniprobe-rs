@@ -330,8 +330,8 @@ mod tests {
     fn userauth_register_works_with_public_params() {
         let url = format!("{BASE_URL}/api/v1/sign_credential");
 
-        let public_params = "ASj7JbvUcPmoAez9FsTQyvX7qgy2oatK134seX+6rMlZAZgmpigFclXK2VlIwXhBsyVVNSaZv0UINfrKLkV+/fsEAwAAAAAAAABMHByM3xinwWavgTQGEoRQWiwl/oOmskDOQ0vbiuV4Lfji8PTSy1N5SgOGDw+LxC9qnB9zN5G8ARZShGxgNPs9iHiUNJejm9Xexg3OfW0xRbef9MrpyyjsPNeQUfEkul4=";
-        let manifest_version = "_x7wwWzm2eR9fODDHeOnDyutjCTpT1UI";
+        let public_params = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=";
+        let manifest_version = "gDt0AJGYWpiV98Z6LdCJtaMP40hDpnya";
 
         let result =
             userauth_register(url, public_params.to_string(), manifest_version.to_string())
@@ -355,8 +355,8 @@ mod tests {
 
     #[test]
     fn userauth_submit_works_with_mock_measurement() {
-        let public_params = "ASj7JbvUcPmoAez9FsTQyvX7qgy2oatK134seX+6rMlZAZgmpigFclXK2VlIwXhBsyVVNSaZv0UINfrKLkV+/fsEAwAAAAAAAABMHByM3xinwWavgTQGEoRQWiwl/oOmskDOQ0vbiuV4Lfji8PTSy1N5SgOGDw+LxC9qnB9zN5G8ARZShGxgNPs9iHiUNJejm9Xexg3OfW0xRbef9MrpyyjsPNeQUfEkul4=".to_string();
-        let manifest_version = "_x7wwWzm2eR9fODDHeOnDyutjCTpT1UI".to_string();
+        let public_params = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=".to_string();
+        let manifest_version = "gDt0AJGYWpiV98Z6LdCJtaMP40hDpnya".to_string();
 
         let open_url = format!("{BASE_URL}/report");
         let report_payload = serde_json::json!({
@@ -422,8 +422,8 @@ mod tests {
             credential: credential,
             public_params: public_params,
             manifest_version: manifest_version,
-            age_range: ParamRange { min: 0, max: 2600000 },
-            measurement_count_range: ParamRange { min: 0, max: 10000 },
+            age_range: ParamRange { min: 2461110, max: 2826140 },
+            measurement_count_range: ParamRange { min: 0, max: 10000000 },
         });
         let submit_result = userauth_submit(
             submit_url,
