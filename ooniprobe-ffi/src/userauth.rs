@@ -376,7 +376,7 @@ mod tests {
         })
         .to_string();
 
-        let submit_url = format!("{BASE_URL}/api/v1/submit_measurement/");
+        let submit_url = format!("{BASE_URL}/api/v1/submit_measurement");
         let credential_config = Some(CredentialConfig {
             credential: credential,
             public_params: public_params,
