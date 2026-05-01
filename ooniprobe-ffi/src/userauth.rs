@@ -62,21 +62,10 @@ struct SubmitMeasurementPayload {
     protocol_version: Option<String>,
 }
 
-// VerificationStatus
-#[derive(Serialize, Deserialize)]
-enum VerificationStatus {
-    #[serde(rename = "verified")]
-    Verified,
-    #[serde(rename = "failed")]
-    Failed,
-    #[serde(rename = "unverified")]
-    Unverified
-}
-
 #[derive(Serialize, Deserialize)]
 struct SubmitMeasurementResponse {
     measurement_uid: Option<String>,
-    verification_status: VerificationStatus,
+    verification_status: String,
     submit_response: Option<String>,
     protocol_version: String,
     error: Option<String>
