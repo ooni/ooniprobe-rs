@@ -62,21 +62,10 @@ struct SubmitMeasurementPayload {
     protocol_version: Option<String>,
 }
 
-// VerificationStatus
-#[derive(Serialize, Deserialize)]
-enum VerificationStatus {
-    #[serde(rename = "verified")]
-    Verified,
-    #[serde(rename = "failed")]
-    Failed,
-    #[serde(rename = "unverified")]
-    Unverified
-}
-
 #[derive(Serialize, Deserialize)]
 struct SubmitMeasurementResponse {
     measurement_uid: Option<String>,
-    verification_status: VerificationStatus,
+    verification_status: String,
     submit_response: Option<String>,
     protocol_version: String,
     error: Option<String>
@@ -358,35 +347,6 @@ mod tests {
         let public_params = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=".to_string();
         let manifest_version = "gDt0AJGYWpiV98Z6LdCJtaMP40hDpnya".to_string();
 
-        let open_url = format!("{BASE_URL}/report");
-        let report_payload = serde_json::json!({
-            "data_format_version": "0.2.0",
-            "format": "json",
-            "probe_asn": "AS117",
-            "probe_cc": "IT",
-            "software_name": "ooniprobe-engine",
-            "software_version": "0.1.0",
-            "test_name": "dummy",
-            "test_start_time": "2019-10-28 12:51:06",
-            "test_version": "0.1.0"
-        })
-        .to_string();
-
-        let open_resp = client_post(
-            open_url,
-            vec![KeyValue {
-                key: "Content-Type".into(),
-                value: "application/json".into(),
-            }],
-            report_payload,
-        )
-        .expect("Failed to open report");
-
-        let open_body: serde_json::Value =
-            serde_json::from_str(open_resp.body_text.as_ref().unwrap()).unwrap();
-
-        let report_id = open_body["report_id"].as_str().unwrap().to_string();
-
         let reg_result = userauth_register(
             format!("{BASE_URL}/api/v1/sign_credential"),
             public_params.clone(),
@@ -403,7 +363,6 @@ mod tests {
 
         let measurement_content = serde_json::json!({
             "id": "bdd20d7a-bba5-40dd-a111-9863d7908572",
-            "report_id": report_id,
             "measurement_start_time": "2026-03-31 23:59:58",
             "probe_id": probe_id.probe_id,
             "probe_asn": probe_asn,
@@ -417,7 +376,7 @@ mod tests {
         })
         .to_string();
 
-        let submit_url = format!("{BASE_URL}/api/v1/submit_measurement/{}", report_id);
+        let submit_url = format!("{BASE_URL}/api/v1/submit_measurement");
         let credential_config = Some(CredentialConfig {
             credential: credential,
             public_params: public_params,
