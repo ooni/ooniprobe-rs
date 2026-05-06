@@ -21,6 +21,7 @@ pub struct ClientOptions {
     base_url: Option<String>,
     timeout: Option<f32>,
     user_agent: Option<String>,
+    proxy_url: Option<String>,
 }
 
 impl ClientOptions {
@@ -29,6 +30,7 @@ impl ClientOptions {
             base_url: None,
             timeout: None,
             user_agent: None,
+            proxy_url: None
         }
     }
 }
