@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
 use mime::Mime;
-use std::{iter::Product, sync::Arc};
+use std::{sync::Arc};
 use std::time::Duration;
 use tokio::runtime::Runtime;
 use wreq::tls::CertStore;

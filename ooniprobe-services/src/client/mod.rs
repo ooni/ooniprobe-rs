@@ -33,6 +33,22 @@ impl ClientOptions {
             proxy_url: None
         }
     }
+
+   pub fn set_base_url(&mut self, base_url: Option<&str>) {
+        self.base_url = base_url.map(String::from);
+    }
+
+    pub fn set_timeout(&mut self, timeout: Option<f32>) {
+        self.timeout = timeout;
+    }
+
+    pub fn set_user_agent(&mut self, user_agent: Option<&str>) {
+        self.user_agent = user_agent.map(String::from);
+    }
+
+    pub fn set_proxy_url(&mut self, proxy_url: Option<&str>) {
+        self.proxy_url = proxy_url.map(String::from);
+    }
 }
 
 #[derive(Debug)]

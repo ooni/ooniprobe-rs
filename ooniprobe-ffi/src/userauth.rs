@@ -123,6 +123,7 @@ pub fn userauth_register(
     url: String,
     public_params: String,
     manifest_version: String,
+    proxy: Option<String>,
 ) -> Result<CredentialResult, OoniError> {
     // initialize user state with public params
     let pp = decode_public_params(&public_params)?;
@@ -142,7 +143,7 @@ pub fn userauth_register(
     let json_payload = serde_json::to_string(&payload)?;
 
     // make the API call
-    let client = build_client()?;
+    let client = build_client(&url, proxy.as_deref())?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))
@@ -192,6 +193,7 @@ pub fn userauth_submit(
     content: String,
     probe_cc: String,
     probe_asn: String,
+    proxy: Option<String>,
     credential_config: Option<CredentialConfig>,
 ) -> Result<CredentialResult, OoniError> {
     let measurement_content: serde_json::Value = serde_json::from_str(&content)?;
@@ -250,7 +252,7 @@ pub fn userauth_submit(
     let json_payload = serde_json::to_string(&submit_payload)?;
 
     // make the API call
-    let client = build_client()?;
+    let client = build_client(&url, proxy.as_deref())?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))
@@ -309,7 +311,6 @@ pub fn userauth_submit(
 
 #[cfg(test)]
 mod tests {
-    use crate::client::{client_post, KeyValue};
     use crate::get_probe_id;
     use crate::userauth::{userauth_register, userauth_submit, CredentialConfig, ParamRange};
 
@@ -323,7 +324,7 @@ mod tests {
         let manifest_version = "gDt0AJGYWpiV98Z6LdCJtaMP40hDpnya";
 
         let result =
-            userauth_register(url, public_params.to_string(), manifest_version.to_string())
+            userauth_register(url, public_params.to_string(), manifest_version.to_string(), None)
                 .expect("The FFI call itself should not throw an OoniError");
 
         assert_eq!(
@@ -351,6 +352,7 @@ mod tests {
             format!("{BASE_URL}/api/v1/sign_credential"),
             public_params.clone(),
             manifest_version.clone(),
+            None,
         )
         .expect("Registration failed");
 
@@ -389,6 +391,7 @@ mod tests {
             measurement_content,
             probe_cc.clone(),
             probe_asn.clone(),
+            None,
             credential_config,
         )
         .expect("Submission call failed");
