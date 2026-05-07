@@ -29,6 +29,7 @@ tokio = { version = "1.42.0", features = ["full"] }
 tokio-rustls = "0.26.4"
 webpki-roots = "1.0.6"
 hickory-resolver = "0.25.2"
+hickory-proto = "0.25.2"
 url = "2.5.4"
 bytes = "1.9.0"
 http-body-util = "0.1.3"

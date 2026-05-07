@@ -14,8 +14,11 @@ tokio-rustls = {workspace = true}
 pin-project= {workspace = true}
 rustls = {workspace = true}
 webpki-roots = {workspace = true}
-hickory-resolver = {workspace = true}
+hickory-resolver = {workspace = true, features = ["tokio"]}
+hickory-proto = {workspace = true}
 http = {workspace = true}
 http-body-util = {workspace = true}
 hyper = {workspace = true}
 hyper-util = {workspace = true}
+rand = {workspace = true}
+url = {workspace = true}

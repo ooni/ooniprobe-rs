@@ -236,7 +236,7 @@ pub struct HttpRequest {
     pub body: MaybeBinaryData,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub body_is_truncated: Option<bool>,
-    pub headers_list: Vec<(String, MaybeBinaryData)>,
+    pub headers_list: Vec<(String, String)>,
     pub headers: std::collections::HashMap<String, String>,
     pub method: String,
     pub x_transport: String,
@@ -245,11 +245,11 @@ pub struct HttpRequest {
 /// HttpResponse: https://github.com/ooni/spec/blob/master/data-formats/df-001-httpt.md#response
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HttpResponse {
-    body: MaybeBinaryData,
-    body_is_truncated: bool,
-    code: u16,
-    headers_list: Vec<(String, String)>,
-    headers: std::collections::HashMap<String, String>,
+    pub body: MaybeBinaryData,
+    pub body_is_truncated: bool,
+    pub code: u16,
+    pub headers_list: Vec<(String, String)>,
+    pub headers: std::collections::HashMap<String, String>,
 }
 
 /// HttpTransaction: https://github.com/ooni/spec/blob/master/data-formats/df-001-httpt.md

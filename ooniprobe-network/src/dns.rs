@@ -1,30 +1,28 @@
 //! DNS resolution with full transport-layer tracing.
-//!
-//! Every DNS transport here is built on top of the **same** traced primitives
-//! used by the rest of `ooniprobe-network` — [`TracingDialer`], [`TracingTlsHandshaker`],
-//! [`TracingHttpClient`], and [`TracingUdpSocket`].
-//!
-//! Wire encoding/decoding uses `hickory-proto` (no hickory transport layer).
 
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
 use bytes::Bytes;
+use hickory_proto::ProtoErrorKind;
 use http::{Method, Request};
 use http_body_util::Full;
 
 use hickory_proto::{
     op::{Message, MessageType, OpCode, Query, ResponseCode},
     rr::{DNSClass, Name, RData, RecordType},
-    serialize::binary::{BinDecodable, BinEncodable},
+    serialize::binary::BinDecodable,
 };
 
+use hickory_resolver::ResolveError;
+
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use url::Url;
 
 use crate::{
     archival::{DnsAnswer, DnsLookupResult},
     errors::OoniError,
-    http::TracingHttpClient,
+    http::{TracingHttpClient, read_body},
     tcp::TracingDialer,
     tls::TracingTlsHandshaker,
     trace::Trace,
@@ -61,7 +59,7 @@ fn parse_response(data: &[u8], qtype: RecordType) -> Result<(Vec<DnsAnswer>, i64
     let msg = Message::from_bytes(data)
         .map_err(|e| OoniError::DnsUnexpected(format!("decode error: {e}")))?;
 
-    let rcode = msg.response_code() as i64;
+    let rcode = i64::from(u16::from(msg.response_code()));
 
     match msg.response_code() {
         ResponseCode::NXDomain => return Err(OoniError::DnsNxDomain),
@@ -74,19 +72,19 @@ fn parse_response(data: &[u8], qtype: RecordType) -> Result<(Vec<DnsAnswer>, i64
         .answers()
         .iter()
         .filter_map(|rec| match rec.data() {
-            Some(RData::A(a)) if qtype == RecordType::A => Some(DnsAnswer {
+            RData::A(a) if qtype == RecordType::A => Some(DnsAnswer {
                 answer_type: "A".into(),
                 ipv4: Some(a.to_string()),
                 ttl: Some(rec.ttl()),
                 ..Default::default()
             }),
-            Some(RData::AAAA(a)) if qtype == RecordType::AAAA => Some(DnsAnswer {
+            RData::AAAA(a) if qtype == RecordType::AAAA => Some(DnsAnswer {
                 answer_type: "AAAA".into(),
                 ipv6: Some(a.to_string()),
                 ttl: Some(rec.ttl()),
                 ..Default::default()
             }),
-            Some(RData::CNAME(c)) => Some(DnsAnswer {
+            RData::CNAME(c) => Some(DnsAnswer {
                 answer_type: "CNAME".into(),
                 hostname: Some(c.to_string()),
                 ttl: Some(rec.ttl()),
@@ -101,6 +99,18 @@ fn parse_response(data: &[u8], qtype: RecordType) -> Result<(Vec<DnsAnswer>, i64
     }
 
     Ok((answers, rcode))
+}
+
+fn classify_hickory(e: &ResolveError) -> OoniError {
+    use hickory_resolver::ResolveErrorKind;
+    match e.kind() {
+        ResolveErrorKind::Proto(proto_err) => match proto_err.kind() {
+            ProtoErrorKind::NoRecordsFound { .. } => OoniError::DnsNoAnswer,
+            ProtoErrorKind::Timeout { .. } => OoniError::DnsTimeout,
+            _ => OoniError::DnsUnexpected(proto_err.to_string()),
+        },
+        _ => OoniError::DnsUnexpected(e.to_string()),
+    }
 }
 
 /// Extract IP addresses from a parsed answer list.
@@ -141,7 +151,6 @@ pub enum DnsTransport {
 
 impl DnsTransport {
     /// Exchange a raw DNS query with the server using our traced primitives.
-    /// On return, `trace` is populated with transport-layer events.
     async fn exchange(
         &self,
         query: &[u8],
@@ -151,14 +160,11 @@ impl DnsTransport {
         match self {
             Self::System => unreachable!("System transport has no wire exchange"),
 
-            // ── UDP ───────────────────────────────────────────────────────
             Self::Udp { server } => {
                 let sock = TracingUdpSocket::connect(*server, trace.clone()).await?;
                 sock.exchange(query, Duration::from_secs(5), tx_id).await
             }
 
-            // ── DoT (RFC 7858) ────────────────────────────────────────────
-            // 2-byte big-endian length prefix before each DNS message.
             Self::Dot { server, hostname } => {
                 let dialer = TracingDialer::new(trace.clone());
                 let stream = dialer.connect(*server, tx_id).await?;
@@ -189,8 +195,6 @@ impl DnsTransport {
                 Ok(resp)
             }
 
-            // ── DoH (RFC 8484) ────────────────────────────────────────────
-            // POST /dns-query  Content-Type: application/dns-message
             Self::Doh {
                 server,
                 hostname,
@@ -211,11 +215,11 @@ impl DnsTransport {
                     .header("Content-Type", "application/dns-message")
                     .header("Accept", "application/dns-message")
                     .header("User-Agent", crate::http::ooni_user_agent())
-                    .body(Full::new(Bytes::copy_from_slice(query_wire)))
+                    .body(Full::new(Bytes::copy_from_slice(query)))
                     .map_err(|e| OoniError::Unknown(format!("DoH req build: {e}")))?;
 
                 let resp = http.send_http2(tls, req, &addr, "h2", tx_id).await?;
-                let (body, _) = crate::http::read_body(resp, 65_535).await;
+                let (body, _) = read_body(resp, 65_535).await;
                 Ok(body)
             }
         }
@@ -242,8 +246,7 @@ impl DnsTransport {
 
 // TracingResolver
 
-/// A DNS resolver that records every lookup **and all transport-layer events**
-/// into a [`Trace`].
+/// A DNS resolver that records every lookup **and all transport-layer events** into a [`Trace`].
 pub struct TracingResolver {
     transport: DnsTransport,
     trace: Trace,
@@ -294,12 +297,8 @@ impl TracingResolver {
     }
 
     /// Parse a resolver URL and build the appropriate transport.
-    ///
-    /// Supported schemes: `udp://`, `dot://`, `https://`, `doh://`.
-    /// If the host is a hostname (not an IP literal), it is resolved once
-    /// using the OS resolver before returning — that resolution is **not** traced.
     pub async fn from_url(url: &str, trace: Trace) -> Result<Self, OoniError> {
-        let u = url::Url::parse(url)
+        let u = Url::parse(url)
             .map_err(|e| OoniError::Unknown(format!("invalid resolver URL: {e}")))?;
 
         let host = u
@@ -345,18 +344,6 @@ impl TracingResolver {
         } else {
             Ok(addrs)
         }
-    }
-
-    /// Issue a single A query.
-    pub async fn lookup_a(&self, hostname: &str) -> Result<Vec<IpAddr>, OoniError> {
-        let tx_id = self.trace.next_transaction_id();
-        self.do_lookup(hostname, RecordType::A, tx_id).await
-    }
-
-    /// Issue a single AAAA query.
-    pub async fn lookup_aaaa(&self, hostname: &str) -> Result<Vec<IpAddr>, OoniError> {
-        let tx_id = self.trace.next_transaction_id();
-        self.do_lookup(hostname, RecordType::AAAA, tx_id).await
     }
 
     async fn do_lookup(
@@ -408,7 +395,7 @@ impl TracingResolver {
             rcode,
             t0,
             t,
-            tags: vec![],
+            tags: None,
             transaction_id: Some(tx_id),
         });
 
@@ -419,27 +406,38 @@ impl TracingResolver {
         }
     }
 
-    /// System getaddrinfo via hickory resolver (opaque — no wire events).
+    /// Issue a single A query.
+    pub async fn lookup_a(&self, hostname: &str) -> Result<Vec<IpAddr>, OoniError> {
+        let tx_id = self.trace.next_transaction_id();
+        self.do_lookup(hostname, RecordType::A, tx_id).await
+    }
+
+    /// Issue a single AAAA query.
+    pub async fn lookup_aaaa(&self, hostname: &str) -> Result<Vec<IpAddr>, OoniError> {
+        let tx_id = self.trace.next_transaction_id();
+        self.do_lookup(hostname, RecordType::AAAA, tx_id).await
+    }
+
+    /// System getaddrinfo via hickory resolver
     async fn system_lookup(
         &self,
         hostname: &str,
         qtype: RecordType,
     ) -> Result<(Vec<DnsAnswer>, i64), OoniError> {
-        use hickory_resolver::{
-            config::{ResolverConfig, ResolverOpts},
-            TokioAsyncResolver,
-        };
+        use hickory_resolver::TokioResolver;
 
-        let r = TokioAsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default());
+        let r = TokioResolver::builder_tokio()
+            .map_err(|e| OoniError::DnsUnexpected(format!("failed to create resolver: {e}")))?
+            .build();
 
         let result: Result<Vec<IpAddr>, _> = if qtype == RecordType::AAAA {
             r.ipv6_lookup(hostname)
                 .await
-                .map(|l| l.iter().map(|a| IpAddr::V6(*a)).collect())
+                .map(|l| l.iter().map(|a| IpAddr::V6(a.0)).collect())
         } else {
             r.ipv4_lookup(hostname)
                 .await
-                .map(|l| l.iter().map(|a| IpAddr::V4(*a)).collect())
+                .map(|l| l.iter().map(|a| IpAddr::V4(a.0)).collect())
         };
 
         match result {
@@ -474,34 +472,11 @@ async fn resolve_to_socket_addr(host: &str, port: u16) -> Result<SocketAddr, Oon
     if let Ok(addr) = target.parse::<SocketAddr>() {
         return Ok(addr);
     }
+
     // Fall back to OS resolution.
-    tokio::net::lookup_host(&target)
+    tokio::net::lookup_host(target)
         .await
         .map_err(|e| OoniError::DnsUnexpected(e.to_string()))?
         .next()
         .ok_or(OoniError::DnsNoAnswer)
-}
-
-fn classify_hickory(e: &hickory_resolver::error::ResolveError) -> OoniError {
-    use hickory_resolver::error::ResolveErrorKind;
-    match e.kind() {
-        ResolveErrorKind::NoRecordsFound { .. } => OoniError::DnsNoAnswer,
-        ResolveErrorKind::Timeout => OoniError::DnsTimeout,
-        _ => OoniError::DnsUnexpected(e.to_string()),
-    }
-}
-
-/// Returns `true` for addresses that should not appear in public DNS.
-pub fn is_bogon(addr: &IpAddr) -> bool {
-    match addr {
-        IpAddr::V4(v4) => {
-            v4.is_loopback()
-                || v4.is_private()
-                || v4.is_link_local()
-                || v4.is_broadcast()
-                || v4.is_documentation()
-                || v4.is_unspecified()
-        }
-        IpAddr::V6(v6) => v6.is_loopback() || v6.is_unspecified(),
-    }
 }
