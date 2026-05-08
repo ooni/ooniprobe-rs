@@ -22,7 +22,7 @@ use url::Url;
 use crate::{
     archival::{DnsAnswer, DnsLookupResult},
     errors::OoniError,
-    http::{TracingHttpClient, read_body},
+    http::{TracingHttpClient, read_body, http_user_agent},
     tcp::TracingDialer,
     tls::TracingTlsHandshaker,
     trace::Trace,
@@ -214,7 +214,7 @@ impl DnsTransport {
                     .header("Host", hostname.as_str())
                     .header("Content-Type", "application/dns-message")
                     .header("Accept", "application/dns-message")
-                    .header("User-Agent", crate::http::ooni_user_agent())
+                    .header("User-Agent", http_user_agent())
                     .body(Full::new(Bytes::copy_from_slice(query)))
                     .map_err(|e| OoniError::Unknown(format!("DoH req build: {e}")))?;
 

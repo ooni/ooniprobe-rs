@@ -97,7 +97,7 @@ pub struct DnsAnswer {
     pub ipv4: Option<String>,
     pub ipv6: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pubminimum_ttl: Option<String>,
+    pub minimum_ttl: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_interval: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -30,6 +30,11 @@ fn collect_headers(map: &http::HeaderMap) -> (Vec<(String, String)>, HashMap<Str
     (list, map)
 }
 
+/// HTTP user agent string.
+pub fn http_user_agent() -> &'static str {
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.10 Safari/605.1.1"
+}
+
 /// Request metadata captured before the body is consumed.
 struct RequestMeta {
     url: String,
@@ -44,7 +49,7 @@ impl RequestMeta {
         let url = req.uri().to_string();
         let method = req.method().to_string();
         let (hdrs_list, hdrs) = collect_headers(req.headers());
-        
+
         let body = req
             .body()
             .clone()
@@ -65,13 +70,28 @@ impl RequestMeta {
     fn to_http_request(&self) -> HttpRequest {
         HttpRequest {
             body: MaybeBinaryData(self.body.clone()),
-            body_is_truncated: false,
+            body_is_truncated: Some(false),
             headers_list: self.headers_list.clone(),
             headers: self.headers.clone(),
             method: self.method.clone(),
             url: self.url.clone(),
             x_transport: "tcp".into(),
         }
+    }
+}
+
+/// Collect and optionally truncate the body of a response.
+pub async fn read_body(response: Response<Incoming>, max_bytes: usize) -> (Vec<u8>, bool) {
+    match response.into_body().collect().await {
+        Ok(c) => {
+            let b = c.to_bytes();
+            if b.len() > max_bytes {
+                (b[..max_bytes].to_vec(), true)
+            } else {
+                (b.to_vec(), false)
+            }
+        }
+        Err(_) => (vec![], false),
     }
 }
 
@@ -112,7 +132,7 @@ impl TracingHttpClient {
         let send_result = hyper::client::conn::http1::handshake(io)
             .await
             .map_err(|_| OoniError::HttpRequestFailed)
-            .and_then(|(mut sender, conn)| {
+            .and_then(|(sender, conn)| {
                 tokio::spawn(async move {
                     let _ = conn.await;
                 });
@@ -120,10 +140,6 @@ impl TracingHttpClient {
             });
 
         match send_result {
-            Err(e) => {
-                self.record_failure(&meta, address, alpn, tx_id, t0, &e);
-                Err(e)
-            }
             Ok(mut sender) => {
                 let resp = sender
                     .send_request(request)
@@ -131,6 +147,10 @@ impl TracingHttpClient {
                     .map_err(|_| OoniError::HttpRequestFailed);
                 let t = self.trace.elapsed_secs();
                 self.record_result(meta, address, alpn, tx_id, t0, t, resp)
+            }
+            Err(e) => {
+                self.record_failure(&meta, address, alpn, tx_id, t0, &e);
+                Err(e)
             }
         }
     }
@@ -154,7 +174,7 @@ impl TracingHttpClient {
         let send_result = hyper::client::conn::http2::handshake::<_, _, Full<Bytes>>(exec, io)
             .await
             .map_err(|_| OoniError::HttpRequestFailed)
-            .and_then(|(mut sender, conn)| {
+            .and_then(|(sender, conn)| {
                 tokio::spawn(async move {
                     let _ = conn.await;
                 });
@@ -162,10 +182,6 @@ impl TracingHttpClient {
             });
 
         match send_result {
-            Err(e) => {
-                self.record_failure(&meta, address, alpn, tx_id, t0, &e);
-                Err(e)
-            }
             Ok(mut sender) => {
                 let resp = sender
                     .send_request(request)
@@ -173,6 +189,10 @@ impl TracingHttpClient {
                     .map_err(|_| OoniError::HttpRequestFailed);
                 let t = self.trace.elapsed_secs();
                 self.record_result(meta, address, alpn, tx_id, t0, t, resp)
+            }
+            Err(e) => {
+                self.record_failure(&meta, address, alpn, tx_id, t0, &e);
+                Err(e)
             }
         }
     }
@@ -198,6 +218,7 @@ impl TracingHttpClient {
             t,
             tags: None,
             transaction_id: Some(tx_id),
+            response_length: None
         });
     }
 
@@ -216,13 +237,13 @@ impl TracingHttpClient {
                 let status = resp.status().as_u16();
                 let (hdrs_list, hdrs) = collect_headers(resp.headers());
                 self.trace.record_http_request(HttpTransaction {
-                    network: "tcp".into(),
-                    address: address.to_owned(),
-                    alpn: alpn.to_owned(),
+                    network: Some("tcp".into()),
+                    address: Some(address.to_owned()),
+                    alpn: Some(alpn.to_owned()),
                     failure: None,
                     request: meta.to_http_request(),
                     response: HttpResponse {
-                        body: MaybeBinaryBody(vec![]),
+                        body: MaybeBinaryData(vec![]),
                         body_is_truncated: false,
                         code: status,
                         headers_list: hdrs_list,
@@ -230,8 +251,9 @@ impl TracingHttpClient {
                     },
                     t0,
                     t,
-                    tags: vec![],
+                    tags: None,
                     transaction_id: Some(tx_id),
+                    response_length: None, // TODO: populate this accurately from the content-length header
                 });
                 Ok(resp)
             }
@@ -243,11 +265,10 @@ impl TracingHttpClient {
     }
 }
 
-
 // Trait to call `collect()` synchronously on `Full<Bytes>` (it's always ready).
 trait NowOrNever: std::future::Future + Sized {
     fn now_or_never(self) -> Option<Self::Output> {
-        use std::pin::Pin;
+        use std::pin::pin;
         use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
         fn noop(_: *const ()) {}
@@ -260,7 +281,10 @@ trait NowOrNever: std::future::Future + Sized {
         }
         let waker = unsafe { Waker::from_raw(make_waker()) };
         let mut cx = Context::from_waker(&waker);
-        match Pin::new(&mut { self }).poll(&mut cx) {
+
+        let mut future = pin!(self);
+
+        match future.as_mut().poll(&mut cx) {
             Poll::Ready(v) => Some(v),
             Poll::Pending => None,
         }
@@ -282,29 +306,9 @@ pub fn get_request(url: &str) -> Result<Request<Full<Bytes>>, OoniError> {
         .method(Method::GET)
         .uri(uri)
         .header("Host", &host)
-        .header("User-Agent", ooni_user_agent())
-        .header("Accept", "*/*")
-        .header("Accept-Language", "en-US;q=0.8,en;q=0.5")
+        .header("User-Agent", http_user_agent())
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .header("Accept-Language", "en-US,en;q=0.9")
         .body(Full::new(Bytes::new()))
         .map_err(|e| OoniError::Unknown(format!("request build error: {e}")))
-}
-
-/// OONI probe User-Agent string.
-pub fn ooni_user_agent() -> &'static str {
-    "ooniprobe-rs/0.1.0"
-}
-
-/// Collect and optionally truncate the body of a response.
-pub async fn read_body(response: Response<Incoming>, max_bytes: usize) -> (Vec<u8>, bool) {
-    match response.into_body().collect().await {
-        Ok(c) => {
-            let b = c.to_bytes();
-            if b.len() > max_bytes {
-                (b[..max_bytes].to_vec(), true)
-            } else {
-                (b.to_vec(), false)
-            }
-        }
-        Err(_) => (vec![], false),
-    }
 }
