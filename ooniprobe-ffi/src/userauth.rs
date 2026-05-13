@@ -216,7 +216,7 @@ pub fn userauth_submit(
                 },
                 Range {
                     start: config.measurement_count_range.min,
-                    end: config.measurement_count_range.max,
+                    end: u32::MAX
                 },
             )?;
 
@@ -309,7 +309,6 @@ pub fn userauth_submit(
 
 #[cfg(test)]
 mod tests {
-    use crate::client::{client_post, KeyValue};
     use crate::get_probe_id;
     use crate::userauth::{userauth_register, userauth_submit, CredentialConfig, ParamRange};
 
