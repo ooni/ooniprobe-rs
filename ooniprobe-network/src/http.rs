@@ -218,7 +218,7 @@ impl TracingHttpClient {
             t,
             tags: None,
             transaction_id: Some(tx_id),
-            response_length: None
+            response_length: None,
         });
     }
 
@@ -307,7 +307,10 @@ pub fn get_request(url: &str) -> Result<Request<Full<Bytes>>, OoniError> {
         .uri(uri)
         .header("Host", &host)
         .header("User-Agent", http_user_agent())
-        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .header(
+            "Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        )
         .header("Accept-Language", "en-US,en;q=0.9")
         .body(Full::new(Bytes::new()))
         .map_err(|e| OoniError::Unknown(format!("request build error: {e}")))

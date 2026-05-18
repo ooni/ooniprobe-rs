@@ -1101,6 +1101,21 @@ name = "ooniprobe-core"
 version = "0.1.0"
 
 [[package]]
+name = "ooniprobe-experiments"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "http",
+ "http-body-util",
+ "ooniprobe-network",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-rustls",
+]
+
+[[package]]
 name = "ooniprobe-network"
 version = "0.1.0"
 dependencies = [

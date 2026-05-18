@@ -1,22 +1,17 @@
 [package]
 name = "ooniprobe-experiments"
-version = { workspace = true }
-edition = { workspace = true }
+version = "0.1.0"
+edition = "2021"
 
 [dependencies]
 
-ooniprobe-services = { workspace = true }
+ooniprobe-network = { path = "../ooniprobe-network" }
 
-boring = { workspace = true }
 bytes = { workspace = true }
-http = { workspace = true }
-http-body-util = { workspace = true }
-hyper = { workspace = true }
-hyper-util = { workspace = true }
-tokio = { workspace = true }
-tokio-boring = { workspace = true }
-pin-project = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-quanta = { workspace = true }
-url = { workspace = true }
+tokio = {workspace = true}
+tokio-rustls = {workspace = true}
+http = {workspace = true}
+http-body-util = {workspace = true}
+thiserror = {workspace = true}

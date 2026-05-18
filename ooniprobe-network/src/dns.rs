@@ -22,7 +22,7 @@ use url::Url;
 use crate::{
     archival::{DnsAnswer, DnsLookupResult},
     errors::OoniError,
-    http::{TracingHttpClient, read_body, http_user_agent},
+    http::{http_user_agent, read_body, TracingHttpClient},
     tcp::TracingDialer,
     tls::TracingTlsHandshaker,
     trace::Trace,

@@ -3,9 +3,9 @@ members = [
     "ooniprobe",
     "ooniprobe-core",
     "ooniprobe-services",
-    # "ooniprobe-userauth",
     "ooniprobe-network",
-    #"ooniprobe-experiments",
+    "ooniprobe-experiments"
+    # "ooniprobe-userauth",
 ]
 resolver = "2"
 

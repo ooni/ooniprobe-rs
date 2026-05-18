@@ -1,9 +1,9 @@
-mod archival;
-mod dns;
-mod errors;
-mod http;
-mod tcp;
-mod tls;
-mod trace;
-mod udp;
-mod utils;
+pub mod archival;
+pub mod dns;
+pub mod errors;
+pub mod http;
+pub mod tcp;
+pub mod tls;
+pub mod trace;
+pub mod udp;
+pub mod utils;
