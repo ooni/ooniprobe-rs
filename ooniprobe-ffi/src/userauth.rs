@@ -319,7 +319,7 @@ mod tests {
         let url = format!("{BASE_URL}/api/v1/sign_credential");
 
         let public_params = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=";
-        let manifest_version = "gDt0AJGYWpiV98Z6LdCJtaMP40hDpnya";
+        let manifest_version = "TjxIhQyJHRZsqmidU_coSEl2dZUiBGvL";
 
         let result =
             userauth_register(url, public_params.to_string(), manifest_version.to_string())
@@ -344,7 +344,7 @@ mod tests {
     #[test]
     fn userauth_submit_works_with_mock_measurement() {
         let public_params = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=".to_string();
-        let manifest_version = "gDt0AJGYWpiV98Z6LdCJtaMP40hDpnya".to_string();
+        let manifest_version = "TjxIhQyJHRZsqmidU_coSEl2dZUiBGvL".to_string();
 
         let reg_result = userauth_register(
             format!("{BASE_URL}/api/v1/sign_credential"),
