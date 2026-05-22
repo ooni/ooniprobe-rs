@@ -222,31 +222,3 @@ impl Trace {
         self.0.network_events.lock().unwrap().clone()
     }
 }
-
-/// A span within a trace — represents the timing window of one logical
-/// operation (a single TCP connect, one TLS handshake, etc.).
-pub struct Span {
-    pub t0: f64,
-    pub t: f64,
-    zero_time: Instant,
-    start: Instant,
-}
-
-impl Span {
-    /// Open a new span, recording `t0`.
-    pub fn start(trace: &Trace) -> Self {
-        let start = Instant::now();
-        Self {
-            t0: trace.secs_since(start),
-            t: 0.0,
-            zero_time: trace.zero_time(),
-            start,
-        }
-    }
-
-    /// Close the span, recording `t`.
-    pub fn finish(&mut self) {
-        let now = Instant::now();
-        self.t = now.saturating_duration_since(self.zero_time).as_secs_f64();
-    }
-}

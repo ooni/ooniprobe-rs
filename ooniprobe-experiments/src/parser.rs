@@ -129,12 +129,25 @@ pub enum ParseError {
     Validation(String),
 }
 
+/// Assembles a complete OONI [`Measurement`] from an experiment run.
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct ProbeConfig {
+    pub probe_asn: String,
+    pub probe_cc: String,
+    pub probe_ip: String,
+    pub probe_network_name: String,
+
+    pub software_name: String,
+    pub software_version: String,
+}
+
 /// A fully-parsed, validated experiment description.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ExperimentConfig {
     #[serde(rename = "experiment")]
     pub name: String,
-
+    pub input: Option<String>,
+    pub probe_config: ProbeConfig, 
     pub steps: Vec<Step>,
 }
 

@@ -5,6 +5,8 @@
 //! All types implement `Serialize`/`Deserialize` with field names that
 //! match the JSON keys mandated by the spec.
 
+use std::{time::SystemTime};
+
 use crate::utils::{b64_decode, b64_encode};
 use serde::{Deserialize, Serialize};
 
@@ -275,18 +277,18 @@ pub struct HttpTransaction {
 }
 
 /// Top-level OONI measurement envelope.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Measurement {
     pub annotations: std::collections::HashMap<String, String>,
     pub data_format_version: String,
-    pub extensions: std::collections::HashMap<String, i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extensions: Option<std::collections::HashMap<String, i64>>,
     pub input: Option<String>,
-    pub measurement_start_time: String,
+    pub measurement_start_time: SystemTime,
     pub probe_asn: String,
     pub probe_cc: String,
     pub probe_ip: String,
     pub probe_network_name: String,
-    pub report_id: String,
     pub resolver_asn: String,
     pub resolver_ip: String,
     pub resolver_network_name: String,
@@ -296,6 +298,6 @@ pub struct Measurement {
     pub test_keys: serde_json::Value,
     pub test_name: String,
     pub test_runtime: f64,
-    pub test_start_time: String,
+    pub test_start_time: SystemTime,
     pub test_version: String,
 }
