@@ -5,7 +5,7 @@
 //! All types implement `Serialize`/`Deserialize` with field names that
 //! match the JSON keys mandated by the spec.
 
-use std::{time::SystemTime};
+use std::time::SystemTime;
 
 use crate::utils::{b64_decode, b64_encode};
 use serde::{Deserialize, Serialize};
@@ -205,6 +205,8 @@ pub enum NetworkOperation {
     ReadFrom,
     Write,
     WriteTo,
+    TlsHandshakeStart,
+    TlsHandshakeDone,
     Close, // NOTE: addition to ooni/spec
 }
 

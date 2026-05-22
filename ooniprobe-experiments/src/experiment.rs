@@ -10,21 +10,20 @@ use http_body_util::Full;
 use ooniprobe_network::{
     dns::TracingResolver,
     errors::OoniError,
-    http::{get_request, http_user_agent, TracingHttpClient},
-    tcp::TracingDialer,
+    http::{TracingHttpClient, get_request, http_user_agent},
+    tcp::{TracingDialer, TracingStream},
     tls::TracingTlsHandshaker,
     trace::Trace,
 };
 use std::net::{IpAddr, SocketAddr};
-use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 
 /// Streams the executor holds between steps.
 struct StepContext {
     resolved_ips: Vec<IpAddr>,
     dns_hostname: Option<String>,
-    tcp_streams: Vec<(SocketAddr, TcpStream)>,
-    tls_streams: Vec<(SocketAddr, TlsStream<TcpStream>)>,
+    tcp_streams: Vec<(SocketAddr, TracingStream)>,
+    tls_streams: Vec<(SocketAddr, TlsStream<TracingStream>)>,
 }
 
 impl StepContext {
@@ -171,7 +170,7 @@ impl Experiment {
                     for addr in addrs {
                         let tx_id = self.trace.next_transaction_id();
                         if let Ok(stream) = dialer.connect(addr, tx_id).await {
-                            ctx.tcp_streams.push((addr, stream.into_inner()));
+                            ctx.tcp_streams.push((addr, stream));
                         }
                     }
 
@@ -188,7 +187,7 @@ impl Experiment {
                         .unwrap_or_default();
 
                     let handshaker = if s.skip_verify {
-                        TracingTlsHandshaker::insecure(self.trace.clone())
+                        TracingTlsHandshaker::insecure(self.trace.clone())?
                     } else {
                         TracingTlsHandshaker::new(self.trace.clone())?
                     };

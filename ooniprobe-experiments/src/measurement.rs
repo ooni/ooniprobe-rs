@@ -2,15 +2,13 @@
 //!
 //! This module bridges the experiment executor and the OONI archival format.
 
-use std::{
-    time::{Instant, SystemTime}
-};
+use std::time::{Instant, SystemTime};
 
-use serde::{Serialize};
+use serde::Serialize;
 
 use crate::{
     experiment::Experiment,
-    parser::{ExperimentConfig, ParseError}
+    parser::{ExperimentConfig, ParseError},
 };
 
 use ooniprobe_network::{

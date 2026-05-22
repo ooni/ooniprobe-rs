@@ -109,14 +109,10 @@ impl Trace {
         self.0.index
     }
 
-    // Tags
-
     /// Tags that are automatically appended to every recorded observation.
     pub fn tags(&self) -> &[String] {
         &self.0.tags
     }
-
-    // Record
 
     /// Record a DNS lookup result.
     pub fn record_dns_lookup(&self, mut obs: DnsLookupResult) {

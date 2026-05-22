@@ -5,12 +5,12 @@
 
 use std::sync::Arc;
 
-use rustls::{ClientConfig, RootCertStore};
+use rustls::{crypto::ring, ClientConfig, RootCertStore};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_rustls::{client::TlsStream, TlsConnector};
 
 use crate::{
-    archival::{BinaryData, TlsHandshakeResult, TlsNetwork},
+    archival::{BinaryData, NetworkEvent, NetworkOperation, TlsHandshakeResult, TlsNetwork},
     errors::OoniError,
     trace::Trace,
 };
@@ -20,15 +20,18 @@ pub fn system_tls_config() -> Result<Arc<ClientConfig>, OoniError> {
     let mut root_store = RootCertStore::empty();
     root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
 
-    let config = ClientConfig::builder()
-        .with_root_certificates(root_store)
-        .with_no_client_auth();
+    let config =
+        ClientConfig::builder_with_provider(ring::default_provider().into())
+            .with_safe_default_protocol_versions()
+            .map_err(|e| OoniError::Unknown(format!("TLS config error: {e}")))?
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
 
     Ok(Arc::new(config))
 }
 
 /// Build a `ClientConfig` that skips certificate verification.
-pub fn insecure_tls_config() -> Arc<ClientConfig> {
+pub fn insecure_tls_config() -> Result<Arc<ClientConfig>, OoniError> {
     #[derive(Debug)]
     struct NoVerifier;
 
@@ -69,12 +72,14 @@ pub fn insecure_tls_config() -> Arc<ClientConfig> {
         }
     }
 
-    Arc::new(
-        ClientConfig::builder()
+    let config = ClientConfig::builder_with_provider(ring::default_provider().into())
+            .with_safe_default_protocol_versions()
+            .map_err(|e| OoniError::Unknown(format!("TLS config error: {e}")))?
             .dangerous()
             .with_custom_certificate_verifier(Arc::new(NoVerifier))
-            .with_no_client_auth(),
-    )
+            .with_no_client_auth();
+    
+    Ok(Arc::new(config))
 }
 
 // TracingTlsHandshaker
@@ -97,12 +102,12 @@ impl TracingTlsHandshaker {
     }
 
     /// Create a handshaker that skips certificate validation.
-    pub fn insecure(trace: Trace) -> Self {
-        Self {
-            config: insecure_tls_config(),
+    pub fn insecure(trace: Trace) -> Result<Self, OoniError> {
+        Ok(Self {
+            config: insecure_tls_config()?,
             trace,
             no_tls_verify: true,
-        }
+        })
     }
 
     /// Create a handshaker with a custom [`ClientConfig`].
@@ -130,6 +135,20 @@ impl TracingTlsHandshaker {
             .map_err(|e| OoniError::Unknown(format!("invalid SNI: {e}")))?;
 
         let t0 = self.trace.elapsed_secs();
+        self.trace.record_network_event(NetworkEvent {
+            address: Some(address.to_string()),
+            conn_id: None,
+            dial_id: None,
+            failure: None,
+            num_bytes: None,
+            operation: NetworkOperation::TlsHandshakeStart,
+            proto: Some("tls".into()),
+            t0,
+            t: t0,
+            tags: None,
+            transaction_id: Some(tx_id),
+        });
+
         let result = connector.connect(sni, stream).await;
         let t = self.trace.elapsed_secs();
 

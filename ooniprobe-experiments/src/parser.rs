@@ -1,8 +1,7 @@
 //! Experiment configuration parser.
 //!
 //! An [`ExperimentConfig`] is the single type that both the parser and the
-//! executor work with.  It has a name (used only for logging and reporting)
-//! and an ordered list of [`Step`]s that fully describe what to do.
+//! executor work with.
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -36,7 +35,6 @@ impl fmt::Display for DnsTransport {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DnsStep {
     pub hostname: String,
-
     #[serde(default)]
     pub transport: DnsTransport,
 
@@ -50,20 +48,12 @@ pub struct DnsStep {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TcpStep {
     pub port: u16,
-
-    /// When set, connect to this address directly (bypasses DNS chaining).
-    /// Accepts `"ip"` or `"ip:port"`
     pub address: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TlsStep {
-    /// Server Name Indication sent in the ClientHello.
-    /// When absent, falls back to the hostname from the most recent `dns` step.
     pub sni: Option<String>,
-
-    /// Skip certificate verification.  Useful for censorship measurement where
-    /// the injected certificate wouldn't pass validation.
     #[serde(default)]
     pub skip_verify: bool,
 }
@@ -147,7 +137,7 @@ pub struct ExperimentConfig {
     #[serde(rename = "experiment")]
     pub name: String,
     pub input: Option<String>,
-    pub probe_config: ProbeConfig, 
+    pub probe_config: ProbeConfig,
     pub steps: Vec<Step>,
 }
 

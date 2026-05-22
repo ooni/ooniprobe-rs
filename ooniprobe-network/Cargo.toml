@@ -12,7 +12,7 @@ thiserror = {workspace = true}
 tokio = {workspace = true}
 tokio-rustls = {workspace = true}
 pin-project= {workspace = true}
-rustls = {workspace = true}
+rustls = {workspace = true, features = ["ring"]}
 webpki-roots = {workspace = true}
 hickory-resolver = {workspace = true, features = ["tokio"]}
 hickory-proto = {workspace = true}

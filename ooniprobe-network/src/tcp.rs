@@ -52,6 +52,21 @@ impl TracingDialer {
                     tags: Some(vec![]),
                     transaction_id: Some(tx_id),
                 });
+
+                self.trace.record_network_event(NetworkEvent {
+                    address: Some(addr.to_string()),
+                    conn_id: None,
+                    dial_id: None,
+                    failure: None,
+                    num_bytes: None,
+                    operation: NetworkOperation::Connect,
+                    proto: Some("tcp".into()),
+                    t0,
+                    t,
+                    tags: None,
+                    transaction_id: Some(tx_id),
+                });
+
                 Ok(TracingStream::new(
                     stream,
                     addr.to_string(),
