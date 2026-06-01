@@ -1921,7 +1921,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 [[package]]
 name = "ooniauth-core"
 version = "0.1.0"
-source = "git+https://github.com/ooni/userauth#e1b508b24975400f6fb911872316760628c1e3cc"
+source = "git+https://github.com/ooni/userauth#71af1c74633f4ccc3c9d88ca94ffab6a3b803451"
 dependencies = [
  "bincode",
  "chrono",

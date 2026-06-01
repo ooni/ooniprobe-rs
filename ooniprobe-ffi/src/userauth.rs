@@ -4,10 +4,13 @@ use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use bincode;
 use cmz::cmz_group_init;
-use curve25519_dalek::{ristretto::RistrettoPoint as G, RistrettoPoint};
-use ooniauth_core::registration::UserAuthCredential;
+use curve25519_dalek::{ristretto::RistrettoPoint as G};
+use ooniauth_core::{
+    registration::UserAuthCredential,
+    submit::{digest_point, submit_measurement_hash}
+};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256, Sha512};
+use sha2::{Sha512};
 
 use crate::client::build_client;
 use crate::errors::OoniError;
@@ -55,7 +58,7 @@ struct RegistrationResponse {
 #[derive(Serialize, Deserialize)]
 struct SubmitMeasurementPayload {
     format: String,
-    content: serde_json::Value,
+    content: String,
     nym: Option<String>,
     zkp_request: Option<String>,
     manifest_version: Option<String>,
@@ -88,13 +91,6 @@ fn decode_public_params(public_params: &str) -> Result<PublicParameters, OoniErr
 fn decode_credential(credential: &str) -> Result<UserAuthCredential, OoniError> {
     let cred_bytes = b64_decode(credential)?;
     bincode::deserialize(&cred_bytes).map_err(Into::into)
-}
-
-fn digest_point(point: RistrettoPoint) -> [u8; 32] {
-    let digest = Sha256::digest(point.compress().as_bytes());
-    let mut out = [0u8; 32];
-    out.copy_from_slice(&digest);
-    out
 }
 
 pub fn get_probe_id(
@@ -194,7 +190,6 @@ pub fn userauth_submit(
     probe_asn: String,
     credential_config: Option<CredentialConfig>,
 ) -> Result<CredentialResult, OoniError> {
-    let measurement_content: serde_json::Value = serde_json::from_str(&content)?;
     let (submit_payload, auth_state) = match credential_config {
         Some(config) => {
             // Initialize user state
@@ -204,12 +199,15 @@ pub fn userauth_submit(
             let credential = decode_credential(&config.credential)?;
             user_state.set_credential(credential);
 
+            let measurement_hash = submit_measurement_hash(content.as_bytes()); 
+
             // Create submit request
             let mut rng = rand::thread_rng();
             let ((submit_request, submit_state), probe_id) = user_state.submit_request(
                 &mut rng,
                 probe_cc.clone(),
                 probe_asn.clone(),
+                &measurement_hash,
                 Range {
                     start: config.age_range.min,
                     end: config.age_range.max,
@@ -224,7 +222,7 @@ pub fn userauth_submit(
 
             let payload = SubmitMeasurementPayload {
                 format: "json".to_string(),
-                content: measurement_content,
+                content: content,
                 nym: Some(b64_encode(&probe_id)),
                 zkp_request: Some(b64_encode(&request_bytes)),
                 manifest_version: Some(config.manifest_version),
@@ -236,7 +234,7 @@ pub fn userauth_submit(
         None => {
             let payload = SubmitMeasurementPayload {
                 format: "json".to_string(),
-                content: measurement_content,
+                content: content,
                 nym: None,
                 zkp_request: None,
                 manifest_version: None,
