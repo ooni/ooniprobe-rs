@@ -58,7 +58,7 @@ struct RegistrationResponse {
 #[derive(Serialize, Deserialize)]
 struct SubmitMeasurementPayload {
     format: String,
-    content: serde_json::Value,
+    content: String,
     nym: Option<String>,
     zkp_request: Option<String>,
     manifest_version: Option<String>,
@@ -190,7 +190,6 @@ pub fn userauth_submit(
     probe_asn: String,
     credential_config: Option<CredentialConfig>,
 ) -> Result<CredentialResult, OoniError> {
-    let measurement_content: serde_json::Value = serde_json::from_str(&content)?;
     let (submit_payload, auth_state) = match credential_config {
         Some(config) => {
             // Initialize user state
@@ -223,7 +222,7 @@ pub fn userauth_submit(
 
             let payload = SubmitMeasurementPayload {
                 format: "json".to_string(),
-                content: measurement_content,
+                content: content,
                 nym: Some(b64_encode(&probe_id)),
                 zkp_request: Some(b64_encode(&request_bytes)),
                 manifest_version: Some(config.manifest_version),
@@ -235,7 +234,7 @@ pub fn userauth_submit(
         None => {
             let payload = SubmitMeasurementPayload {
                 format: "json".to_string(),
-                content: measurement_content,
+                content: content,
                 nym: None,
                 zkp_request: None,
                 manifest_version: None,
