@@ -1,11 +1,10 @@
 [workspace]
 members = [
-    "ooniprobe",
-    "ooniprobe-core",
     "ooniprobe-services",
     "ooniprobe-network",
-    "ooniprobe-experiments"
-    # "ooniprobe-userauth",
+    "ooniprobe-experiments",
+    "ooniprobe-ffi",
+    "uniffi-bindgen"
 ]
 resolver = "2"
 
@@ -14,10 +13,9 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
-ooniprobe-core = { version = "0.1.0", path = "./ooniprobe-core" }
 ooniprobe-experiments = { version = "0.1.0", path = "./ooniprobe-experiments" }
 ooniprobe-services = { version = "0.1.0", path = "./ooniprobe-services" }
-ooniprobe-userauth = {version = "0.1.0", path= "./ooniprobe-userauth"}
+ooniauth-core = { git = "https://github.com/ooni/userauth" }
 rand = "0.8.5" 
 bincode = "1"
 chrono = "0.4.40"
@@ -37,14 +35,18 @@ http-body-util = "0.1.3"
 http = "1.4.0"
 pin-project = "1"
 jni = "0.21.1"
-hyper-util = { version = "0.1.20", features = ["http1", "http2", "tokio"] }
-hyper = { version = "1.9.0", features = ["client"] }
-rquest = "2.0.0"
+hyper-util = { version = "0.1.10", features = ["http1", "http2", "tokio"] }
+hyper = { version = "1.5.2", features = ["client"] }
+wreq = { version = "6.0.0-rc.28", features = ["webpki-roots", "query"] }
+wreq-util = "3.0.0-rc.10"
+webpki-root-certs = "1.0.6"
+reqwest = { version = "0.13", features = ["query"] }
 quanta = "0.12.4"
 base64 = "0.22.1"
 mime = "0.3.17"
 encoding_rs = "0.8.35"
 hex = "0.4.3"
 time = { version = "0.3", features = ["std"] }
-cmz = {  version = "0.1.0" }
+cmz = { version = "0.2" }
 curve25519-dalek = { version = "4", features = ["digest", "group", "rand_core", "serde"] }
+sha2 = "0.10.9"
