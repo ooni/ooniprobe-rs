@@ -4,7 +4,7 @@ use mime::Mime;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::runtime::Runtime;
-use wreq::tls::CertStore;
+use wreq::tls::trust::CertStore;
 use wreq_util::Emulation;
 
 use super::{b64_encode, ClientOptions, Error, Response};
@@ -124,7 +124,7 @@ impl ClientBuilder {
 
     pub fn build(self) -> Result<Client, Error> {
         let mut client_builder = wreq::Client::builder()
-            .cert_store(CertStore::from_der_certs(
+            .tls_cert_store(CertStore::from_der_certs(
                 webpki_root_certs::TLS_SERVER_ROOT_CERTS,
             )?)
             .emulation(Emulation::Chrome118);
