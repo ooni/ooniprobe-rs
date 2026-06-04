@@ -8,6 +8,7 @@
 use std::time::SystemTime;
 
 use crate::utils::{b64_decode, b64_encode};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// A byte string that serialises as `{"format":"base64","data":"…"}` per
@@ -254,6 +255,9 @@ pub struct HttpResponse {
     pub code: u16,
     pub headers_list: Vec<(String, String)>,
     pub headers: std::collections::HashMap<String, String>,
+
+    #[serde(skip)]
+    pub raw_body: Vec<u8>,
 }
 
 /// HttpTransaction: https://github.com/ooni/spec/blob/master/data-formats/df-001-httpt.md
@@ -286,6 +290,7 @@ pub struct Measurement {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extensions: Option<std::collections::HashMap<String, i64>>,
     pub input: Option<String>,
+    #[serde(serialize_with = "serialize_time")]
     pub measurement_start_time: SystemTime,
     pub probe_asn: String,
     pub probe_cc: String,
@@ -300,6 +305,15 @@ pub struct Measurement {
     pub test_keys: serde_json::Value,
     pub test_name: String,
     pub test_runtime: f64,
+    #[serde(serialize_with = "serialize_time")]
     pub test_start_time: SystemTime,
     pub test_version: String,
+}
+
+fn serialize_time<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let dt: DateTime<Utc> = (*time).into();
+    serializer.serialize_str(&dt.format("%Y-%m-%d %H:%M:%S").to_string())
 }

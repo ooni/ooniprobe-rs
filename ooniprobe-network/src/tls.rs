@@ -16,16 +16,17 @@ use crate::{
 };
 
 /// Build a `ClientConfig` with the system root store.
-pub fn system_tls_config() -> Result<Arc<ClientConfig>, OoniError> {
+pub fn system_tls_config(alpns: &[&str]) -> Result<Arc<ClientConfig>, OoniError> {
     let mut root_store = RootCertStore::empty();
     root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
 
-    let config =
-        ClientConfig::builder_with_provider(ring::default_provider().into())
-            .with_safe_default_protocol_versions()
-            .map_err(|e| OoniError::Unknown(format!("TLS config error: {e}")))?
-            .with_root_certificates(root_store)
-            .with_no_client_auth();
+    let mut config = ClientConfig::builder_with_provider(ring::default_provider().into())
+        .with_safe_default_protocol_versions()
+        .map_err(|e| OoniError::Unknown(format!("TLS config error: {e}")))?
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+
+    config.alpn_protocols = alpns.iter().map(|s| s.as_bytes().to_vec()).collect();
 
     Ok(Arc::new(config))
 }
@@ -73,12 +74,12 @@ pub fn insecure_tls_config() -> Result<Arc<ClientConfig>, OoniError> {
     }
 
     let config = ClientConfig::builder_with_provider(ring::default_provider().into())
-            .with_safe_default_protocol_versions()
-            .map_err(|e| OoniError::Unknown(format!("TLS config error: {e}")))?
-            .dangerous()
-            .with_custom_certificate_verifier(Arc::new(NoVerifier))
-            .with_no_client_auth();
-    
+        .with_safe_default_protocol_versions()
+        .map_err(|e| OoniError::Unknown(format!("TLS config error: {e}")))?
+        .dangerous()
+        .with_custom_certificate_verifier(Arc::new(NoVerifier))
+        .with_no_client_auth();
+
     Ok(Arc::new(config))
 }
 
@@ -95,7 +96,7 @@ impl TracingTlsHandshaker {
     /// Create a handshaker using system CA roots.
     pub fn new(trace: Trace) -> Result<Self, OoniError> {
         Ok(Self {
-            config: system_tls_config()?,
+            config: system_tls_config(&["h2", "http/1.1"])?,
             trace,
             no_tls_verify: false,
         })

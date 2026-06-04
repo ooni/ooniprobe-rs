@@ -20,6 +20,7 @@ ooniprobe-services = { version = "0.1.0", path = "./ooniprobe-services" }
 ooniprobe-userauth = {version = "0.1.0", path= "./ooniprobe-userauth"}
 rand = "0.8.5" 
 bincode = "1"
+chrono = "0.4.40"
 thiserror = "2.0.12"
 serde = { version = "1.0.216", features = ["serde_derive"] }
 serde_json = "1.0.133"

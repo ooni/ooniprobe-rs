@@ -10,7 +10,7 @@ use http_body_util::Full;
 use ooniprobe_network::{
     dns::TracingResolver,
     errors::OoniError,
-    http::{TracingHttpClient, get_request, http_user_agent},
+    http::{get_request, http_user_agent, TracingHttpClient},
     tcp::{TracingDialer, TracingStream},
     tls::TracingTlsHandshaker,
     trace::Trace,

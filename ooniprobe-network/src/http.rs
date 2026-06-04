@@ -121,7 +121,7 @@ impl TracingHttpClient {
         address: &str,
         alpn: &str,
         tx_id: i64,
-    ) -> Result<Response<Incoming>, OoniError>
+    ) -> Result<HttpResponse, OoniError>
     where
         S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     {
@@ -147,6 +147,7 @@ impl TracingHttpClient {
                     .map_err(|_| OoniError::HttpRequestFailed);
                 let t = self.trace.elapsed_secs();
                 self.record_result(meta, address, alpn, tx_id, t0, t, resp)
+                    .await
             }
             Err(e) => {
                 self.record_failure(&meta, address, alpn, tx_id, t0, &e);
@@ -162,7 +163,7 @@ impl TracingHttpClient {
         address: &str,
         alpn: &str,
         tx_id: i64,
-    ) -> Result<Response<Incoming>, OoniError>
+    ) -> Result<HttpResponse, OoniError>
     where
         S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     {
@@ -189,6 +190,7 @@ impl TracingHttpClient {
                     .map_err(|_| OoniError::HttpRequestFailed);
                 let t = self.trace.elapsed_secs();
                 self.record_result(meta, address, alpn, tx_id, t0, t, resp)
+                    .await
             }
             Err(e) => {
                 self.record_failure(&meta, address, alpn, tx_id, t0, &e);
@@ -222,7 +224,7 @@ impl TracingHttpClient {
         });
     }
 
-    fn record_result(
+    async fn record_result(
         &self,
         meta: RequestMeta,
         address: &str,
@@ -231,31 +233,35 @@ impl TracingHttpClient {
         t0: f64,
         t: f64,
         result: Result<Response<Incoming>, OoniError>,
-    ) -> Result<Response<Incoming>, OoniError> {
+    ) -> Result<HttpResponse, OoniError> {
         match result {
             Ok(resp) => {
                 let status = resp.status().as_u16();
                 let (hdrs_list, hdrs) = collect_headers(resp.headers());
+                let (body, is_truncated) = read_body(resp, MAX_BODY).await;
+                let http_response = HttpResponse {
+                    body: MaybeBinaryData(body.clone()),
+                    body_is_truncated: is_truncated,
+                    code: status,
+                    headers_list: hdrs_list,
+                    headers: hdrs,
+                    raw_body: body,
+                };
+
                 self.trace.record_http_request(HttpTransaction {
                     network: Some("tcp".into()),
                     address: Some(address.to_owned()),
                     alpn: Some(alpn.to_owned()),
                     failure: None,
                     request: meta.to_http_request(),
-                    response: HttpResponse {
-                        body: MaybeBinaryData(vec![]),
-                        body_is_truncated: false,
-                        code: status,
-                        headers_list: hdrs_list,
-                        headers: hdrs,
-                    },
+                    response: http_response.clone(),
                     t0,
                     t,
                     tags: None,
                     transaction_id: Some(tx_id),
                     response_length: None, // TODO: populate this accurately from the content-length header
                 });
-                Ok(resp)
+                Ok(http_response)
             }
             Err(e) => {
                 self.record_failure(&meta, address, alpn, tx_id, t0, &e);

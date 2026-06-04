@@ -22,7 +22,7 @@ use url::Url;
 use crate::{
     archival::{DnsAnswer, DnsLookupResult},
     errors::OoniError,
-    http::{http_user_agent, read_body, TracingHttpClient},
+    http::{http_user_agent, TracingHttpClient},
     tcp::TracingDialer,
     tls::TracingTlsHandshaker,
     trace::Trace,
@@ -219,8 +219,7 @@ impl DnsTransport {
                     .map_err(|e| OoniError::Unknown(format!("DoH req build: {e}")))?;
 
                 let resp = http.send_http2(tls, req, &addr, "h2", tx_id).await?;
-                let (body, _) = read_body(resp, 65_535).await;
-                Ok(body)
+                Ok(resp.raw_body)
             }
         }
     }
