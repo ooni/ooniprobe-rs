@@ -32,6 +32,10 @@ MACOS_TARGETS := \
 	aarch64-apple-darwin \
 	x86_64-apple-darwin
 
+LINUX_TARGETS := \
+	x86_64-unknown-linux-gnu \
+	aarch64-unknown-linux-gnu
+
 .PHONY: clean-android
 clean:
 	cargo clean -p $(CRATE)
@@ -134,11 +138,25 @@ desktop-bindings:
 		--language kotlin \
 		--out-dir $(DESKTOP_BINDINGS_DIR)
 
+.PHONY: linux-targets
+linux-targets:
+	@for t in $(LINUX_TARGETS); do \
+		rustup target add $$t; \
+	done
+
+.PHONY: linux-libs
+macos-libs: linux-targets
+	cargo build -p $(CRATE) --target x86_64-unknown-linux-gnu --release
+	cargo build -p $(CRATE) --target aarch64-unknown-linux-gnu --release	
+
 .PHONY: desktop-linux
-desktop-linux:
-	cargo build -p $(CRATE) --release
+desktop-linux: linux-libs
 	@mkdir -p $(DESKTOP_RESOURCES)/linux-x86-64
-	cp target/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-x86-64/
+	cp target/x86_64-unknown-linux-gnu/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-x86-64/
+
+	@mkdir -p $(DESKTOP_RESOURCES)/linux-aarch64
+	cp target/aarch64-unknown-linux-gnu/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-aarch64/
+
 	$(MAKE) desktop-jar OS_NAME=linux
 
 .PHONY: macos-targets
@@ -147,15 +165,19 @@ macos-targets:
 		rustup target add $$t; \
 	done
 
-.PHONY: desktop-macos
-desktop-macos: macos-targets
+.PHONY: macos-libs
+macos-libs: macos-targets
 	cargo build -p $(CRATE) --target aarch64-apple-darwin --release
-	cargo build -p $(CRATE) --target x86_64-apple-darwin --release
+	cargo build -p $(CRATE) --target x86_64-apple-darwin --release	
+
+.PHONY: desktop-macos
+desktop-macos: macos-libs
 	@mkdir -p $(DESKTOP_RESOURCES)/darwin-universal
 	lipo -create \
 		target/aarch64-apple-darwin/release/libuniffi_ooniprobe.dylib \
 		target/x86_64-apple-darwin/release/libuniffi_ooniprobe.dylib \
 		-output $(DESKTOP_RESOURCES)/darwin-universal/libuniffi_ooniprobe.dylib
+
 	$(MAKE) desktop-jar OS_NAME=macos
 
 .PHONY: desktop-windows
