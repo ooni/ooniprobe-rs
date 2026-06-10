@@ -41,14 +41,22 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build Desktop JAR
-        run: make desktop-linux
+      - name: Build x86_64
+        run: |
+          make linux/x86_64
+
+      - name: Build aarch64
+        run: |
+          make linux/aarch64
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
           CC: aarch64-linux-gnu-gcc
           CXX: aarch64-linux-gnu-g++
+
+      - name: Build Desktop JAR
+        run: make desktop-linux
 
       - name: Upload JAR Artifact
         uses: actions/upload-artifact@v4
