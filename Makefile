@@ -33,7 +33,7 @@ MACOS_TARGETS := \
 	x86_64-apple-darwin
 
 .PHONY: clean-android
-clean:
+clean-android:
 	cargo clean -p $(CRATE)
 	rm -rf $(JNI_DIR)
 	rm -rf $(BINDINGS_DIR)
@@ -121,7 +121,7 @@ ios-xcframework: ios-universal-sim ios-bindings
 ios: ios-xcframework
 
 .PHONY: clean-desktop
-clean:
+clean-desktop:
 	cargo clean -p $(CRATE)
 	rm -rf $(DESKTOP_RESOURCES)
 	rm -rf $(DESKTOP_BINDINGS_DIR)
@@ -135,7 +135,7 @@ desktop-bindings:
 		--out-dir $(DESKTOP_BINDINGS_DIR)
 
 .PHONY: linux/x86_64
-linux/x86:
+linux/x86_64:
 	rustup target add x86_64-unknown-linux-gnu
 	cargo build -p $(CRATE) --target x86_64-unknown-linux-gnu --release
 
