@@ -25,7 +25,7 @@ jobs:
 
       - name: Install cross-compilation toolchain
         run: |
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu cmake ninja-build
 
       - name: Configure cross-compilation
         run: |
@@ -42,9 +42,13 @@ jobs:
           java-version: '17'
 
       - name: Build Desktop JAR
-        shell: bash
-        run: |
-          make desktop-linux
+        run: make desktop-linux
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+          CC: aarch64-linux-gnu-gcc
+          CXX: aarch64-linux-gnu-g++
 
       - name: Upload JAR Artifact
         uses: actions/upload-artifact@v4
