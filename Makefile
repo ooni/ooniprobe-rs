@@ -139,10 +139,13 @@ desktop-linux:
 
 .PHONY: desktop-macos
 desktop-macos:
-	cargo build -p $(CRATE) --release
-	$(eval ARCH := $(shell uname -m | sed 's/arm64/aarch64/'))
-	@mkdir -p $(DESKTOP_RESOURCES)/darwin-$(ARCH)
-	cp target/release/libuniffi_ooniprobe.dylib $(DESKTOP_RESOURCES)/darwin-$(ARCH)/
+	cargo build -p $(CRATE) --target aarch64-apple-darwin --release
+	cargo build -p $(CRATE) --target x86_64-apple-darwin --release
+	@mkdir -p $(DESKTOP_RESOURCES)/darwin-universal
+	lipo -create \
+		target/aarch64-apple-darwin/release/libuniffi_ooniprobe.dylib \
+		target/x86_64-apple-darwin/release/libuniffi_ooniprobe.dylib \
+		-output $(DESKTOP_RESOURCES)/darwin-universal/libuniffi_ooniprobe.dylib
 	$(MAKE) desktop-jar OS_NAME=macos
 
 .PHONY: desktop-windows
