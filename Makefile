@@ -28,6 +28,10 @@ DESKTOP_DIR := desktop
 DESKTOP_RESOURCES := $(DESKTOP_DIR)/src/main/resources
 DESKTOP_BINDINGS_DIR := $(DESKTOP_DIR)/src/main/kotlin
 
+MACOS_TARGETS := \
+	aarch64-apple-darwin \
+	x86_64-apple-darwin
+
 .PHONY: clean-android
 clean:
 	cargo clean -p $(CRATE)
@@ -137,8 +141,14 @@ desktop-linux:
 	cp target/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-x86-64/
 	$(MAKE) desktop-jar OS_NAME=linux
 
+.PHONY: macos-targets
+macos-targets:
+	@for t in $(MACOS_TARGETS); do \
+		rustup target add $$t; \
+	done
+
 .PHONY: desktop-macos
-desktop-macos:
+desktop-macos: macos-targets
 	cargo build -p $(CRATE) --target aarch64-apple-darwin --release
 	cargo build -p $(CRATE) --target x86_64-apple-darwin --release
 	@mkdir -p $(DESKTOP_RESOURCES)/darwin-universal
