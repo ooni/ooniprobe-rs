@@ -145,7 +145,7 @@ linux-targets:
 	done
 
 .PHONY: linux-libs
-macos-libs: linux-targets
+linux-libs: linux-targets
 	cargo build -p $(CRATE) --target x86_64-unknown-linux-gnu --release
 	cargo build -p $(CRATE) --target aarch64-unknown-linux-gnu --release	
 
