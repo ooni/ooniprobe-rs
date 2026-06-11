@@ -28,8 +28,12 @@ DESKTOP_DIR := desktop
 DESKTOP_RESOURCES := $(DESKTOP_DIR)/src/main/resources
 DESKTOP_BINDINGS_DIR := $(DESKTOP_DIR)/src/main/kotlin
 
+MACOS_TARGETS := \
+	aarch64-apple-darwin \
+	x86_64-apple-darwin
+
 .PHONY: clean-android
-clean:
+clean-android:
 	cargo clean -p $(CRATE)
 	rm -rf $(JNI_DIR)
 	rm -rf $(BINDINGS_DIR)
@@ -117,7 +121,7 @@ ios-xcframework: ios-universal-sim ios-bindings
 ios: ios-xcframework
 
 .PHONY: clean-desktop
-clean:
+clean-desktop:
 	cargo clean -p $(CRATE)
 	rm -rf $(DESKTOP_RESOURCES)
 	rm -rf $(DESKTOP_BINDINGS_DIR)
@@ -130,19 +134,45 @@ desktop-bindings:
 		--language kotlin \
 		--out-dir $(DESKTOP_BINDINGS_DIR)
 
+.PHONY: linux/x86_64
+linux/x86_64:
+	rustup target add x86_64-unknown-linux-gnu
+	cargo build -p $(CRATE) --target x86_64-unknown-linux-gnu --release
+
+.PHONY: linux/aarch64
+linux/aarch64:
+	rustup target add aarch64-unknown-linux-gnu 
+	cargo build -p $(CRATE) --target aarch64-unknown-linux-gnu --release	
+
 .PHONY: desktop-linux
 desktop-linux:
-	cargo build -p $(CRATE) --release
 	@mkdir -p $(DESKTOP_RESOURCES)/linux-x86-64
-	cp target/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-x86-64/
+	cp target/x86_64-unknown-linux-gnu/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-x86-64/
+
+	@mkdir -p $(DESKTOP_RESOURCES)/linux-aarch64
+	cp target/aarch64-unknown-linux-gnu/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-aarch64/
+
 	$(MAKE) desktop-jar OS_NAME=linux
 
+.PHONY: macos-targets
+macos-targets:
+	@for t in $(MACOS_TARGETS); do \
+		rustup target add $$t; \
+	done
+
+.PHONY: macos-libs
+macos-libs: macos-targets
+	cargo build -p $(CRATE) --target aarch64-apple-darwin --release
+	cargo build -p $(CRATE) --target x86_64-apple-darwin --release	
+
 .PHONY: desktop-macos
-desktop-macos:
-	cargo build -p $(CRATE) --release
-	$(eval ARCH := $(shell uname -m | sed 's/arm64/aarch64/'))
-	@mkdir -p $(DESKTOP_RESOURCES)/darwin-$(ARCH)
-	cp target/release/libuniffi_ooniprobe.dylib $(DESKTOP_RESOURCES)/darwin-$(ARCH)/
+desktop-macos: macos-libs
+	@mkdir -p $(DESKTOP_RESOURCES)/darwin-universal
+	lipo -create \
+		target/aarch64-apple-darwin/release/libuniffi_ooniprobe.dylib \
+		target/x86_64-apple-darwin/release/libuniffi_ooniprobe.dylib \
+		-output $(DESKTOP_RESOURCES)/darwin-universal/libuniffi_ooniprobe.dylib
+
 	$(MAKE) desktop-jar OS_NAME=macos
 
 .PHONY: desktop-windows
