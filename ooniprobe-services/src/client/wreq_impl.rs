@@ -111,7 +111,7 @@ impl ClientBuilder {
         Self {
             client_options: ClientOptions {
                 base_url: Some("https://api.ooni.org/".to_string()),
-                timeout: Some(10.0),
+                timeout: Some(20.0),
                 user_agent: Some("ooniprobe".to_string()),
             },
         }
