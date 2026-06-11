@@ -1,3 +1,3 @@
-pub mod dataformats;
 pub mod experiment;
-pub mod tracing;
+pub mod measurement;
+pub mod parser;
