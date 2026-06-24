@@ -17,13 +17,13 @@ use crate::errors::OoniError;
 use crate::HttpResponse;
 use ooniauth_core::{PublicParameters, VERSION};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ParamRange {
     pub min: u32,
     pub max: u32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct CredentialConfig {
     pub credential: String,
     pub public_params: String,
