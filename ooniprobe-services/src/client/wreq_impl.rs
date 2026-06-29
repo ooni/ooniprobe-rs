@@ -182,7 +182,7 @@ mod tests {
             .build()
             .unwrap();
         let request = client
-            .request("GET", "https://httpbin.org/stream-bytes/100")
+            .request("GET", "https://httpbingo.org/bytes/100")
             .expect("failed to build request")
             .build()
             .unwrap();
