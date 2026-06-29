@@ -202,13 +202,6 @@ ffi-header:
 		--output $(HEADER) \
 		$(CRATE)/src/capi.rs
 
-.PHONY: staticlib-macos
-staticlib-macos: macos-libs
-	@mkdir -p $(STATICLIB_DIR)/darwin/arm64 $(STATICLIB_DIR)/darwin/amd64
-	cp target/aarch64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/arm64/
-	cp target/x86_64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/amd64/
-	$(MAKE) ffi-header
-
 .PHONY: staticlib-linux
 staticlib-linux:
 	@mkdir -p $(STATICLIB_DIR)/linux/amd64 $(STATICLIB_DIR)/linux/arm64
@@ -216,8 +209,15 @@ staticlib-linux:
 	cp target/aarch64-unknown-linux-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/arm64/
 	$(MAKE) ffi-header
 
+.PHONY: staticlib-macos
+staticlib-macos: macos-libs
+	@mkdir -p $(STATICLIB_DIR)/darwin/arm64 $(STATICLIB_DIR)/darwin/amd64
+	cp target/aarch64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/arm64/
+	cp target/x86_64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/amd64/
+	$(MAKE) ffi-header
+
 .PHONY: staticlib-windows
-staticlib-windows:
+staticlib-windows: windows
 	@mkdir -p $(STATICLIB_DIR)/windows/amd64
 	cp target/x86_64-pc-windows-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/windows/amd64/
 	$(MAKE) ffi-header
