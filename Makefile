@@ -32,6 +32,9 @@ MACOS_TARGETS := \
 	aarch64-apple-darwin \
 	x86_64-apple-darwin
 
+STATICLIB_DIR := target/lib
+HEADER := $(STATICLIB_DIR)/include/ooniprobe_userauth.h
+
 .PHONY: clean-android
 clean-android:
 	cargo clean -p $(CRATE)
@@ -175,13 +178,46 @@ desktop-macos: macos-libs
 
 	$(MAKE) desktop-jar OS_NAME=macos
 
+.PHONY: windows
+windows:
+	rustup target add x86_64-pc-windows-gnu
+	cargo build -p $(CRATE) --target x86_64-pc-windows-gnu --release
+
 .PHONY: desktop-windows
-desktop-windows:
-	cargo build -p $(CRATE) --release
+desktop-windows: windows
 	@mkdir -p $(DESKTOP_RESOURCES)/win32-x86-64
-	cp target/release/uniffi_ooniprobe.dll $(DESKTOP_RESOURCES)/win32-x86-64/
+	cp target/x86_64-pc-windows-gnu/release/uniffi_ooniprobe.dll $(DESKTOP_RESOURCES)/win32-x86-64/
 	$(MAKE) desktop-jar OS_NAME=windows
 
 .PHONY: desktop-jar
 desktop-jar: desktop-bindings
 	cd $(DESKTOP_DIR) && ./gradlew jar -PosName=$(OS_NAME)
+
+.PHONY: ffi-header
+ffi-header:
+	@mkdir -p $(STATICLIB_DIR)/include	
+	cargo run -p cbindgen-gen -- \
+		--config $(CRATE)/cbindgen.toml \
+		--lang c \
+		--output $(HEADER) \
+		$(CRATE)/src/capi.rs
+
+.PHONY: staticlib-linux
+staticlib-linux:
+	@mkdir -p $(STATICLIB_DIR)/linux/amd64 $(STATICLIB_DIR)/linux/arm64
+	cp target/x86_64-unknown-linux-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/amd64/
+	cp target/aarch64-unknown-linux-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/arm64/
+	$(MAKE) ffi-header
+
+.PHONY: staticlib-macos
+staticlib-macos: macos-libs
+	@mkdir -p $(STATICLIB_DIR)/darwin/arm64 $(STATICLIB_DIR)/darwin/amd64
+	cp target/aarch64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/arm64/
+	cp target/x86_64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/amd64/
+	$(MAKE) ffi-header
+
+.PHONY: staticlib-windows
+staticlib-windows: windows
+	@mkdir -p $(STATICLIB_DIR)/windows/amd64
+	cp target/x86_64-pc-windows-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/windows/amd64/
+	$(MAKE) ffi-header
