@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
 use mime::Mime;
-use std::sync::Arc;
+use std::{sync::Arc};
 use std::time::Duration;
 use tokio::runtime::Runtime;
 use wreq::tls::CertStore;
@@ -113,6 +113,7 @@ impl ClientBuilder {
                 base_url: Some("https://api.ooni.org/".to_string()),
                 timeout: Some(20.0),
                 user_agent: Some("ooniprobe".to_string()),
+                proxy_url: None,
             },
         }
     }
@@ -135,6 +136,13 @@ impl ClientBuilder {
 
         if let Some(agent) = self.client_options.user_agent {
             client_builder = client_builder.user_agent(&agent);
+        }
+
+        if let Some(proxy_url) = self.client_options.proxy_url {
+            let proxy = wreq::Proxy::all(proxy_url)
+                .map_err(|e| Error::Wreq(Box::new(e)))?;
+        
+            client_builder = client_builder.proxy(proxy);
         }
 
         let http_client = client_builder

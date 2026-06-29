@@ -106,6 +106,7 @@ impl ClientBuilder {
                 base_url: Some("https://api.ooni.org/".to_string()),
                 timeout: Some(20.0),
                 user_agent: Some("ooniprobe".to_string()),
+                proxy_url: None,
             },
         }
     }
@@ -124,6 +125,13 @@ impl ClientBuilder {
 
         if let Some(agent) = self.client_options.user_agent {
             client_builder = client_builder.user_agent(agent);
+        }
+
+        if let Some(proxy_url) = self.client_options.proxy_url {
+            let proxy = reqwest::Proxy::all(&proxy_url)
+                .map_err(|e| Error::Reqwest(Box::new(e)))?;
+
+            client_builder = client_builder.proxy(proxy);
         }
 
         let http_client = client_builder
