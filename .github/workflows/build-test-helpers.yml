@@ -1,0 +1,40 @@
+name: Build test helpers
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - run: rustup update stable
+
+      - name: Build echo test helper
+        run: cargo build --release --bin echo
+
+      - name: Build json test helper
+        run: cargo build --release --bin jsonth
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v6
+        with:
+          name: echo
+          path: test-helpers/echo
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-helpers
+          path: |
+            target/release/echo
+            target/release/jsonth
