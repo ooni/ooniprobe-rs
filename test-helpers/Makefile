@@ -1,3 +1,6 @@
+all:
+	cargo build --release
+
 echo:
 	cargo build --release --bin echo
 
