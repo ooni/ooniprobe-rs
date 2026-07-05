@@ -28,8 +28,15 @@ DESKTOP_DIR := desktop
 DESKTOP_RESOURCES := $(DESKTOP_DIR)/src/main/resources
 DESKTOP_BINDINGS_DIR := $(DESKTOP_DIR)/src/main/kotlin
 
+MACOS_TARGETS := \
+	aarch64-apple-darwin \
+	x86_64-apple-darwin
+
+STATICLIB_DIR := target/lib
+HEADER := $(STATICLIB_DIR)/include/ooniprobe_userauth.h
+
 .PHONY: clean-android
-clean:
+clean-android:
 	cargo clean -p $(CRATE)
 	rm -rf $(JNI_DIR)
 	rm -rf $(BINDINGS_DIR)
@@ -117,7 +124,7 @@ ios-xcframework: ios-universal-sim ios-bindings
 ios: ios-xcframework
 
 .PHONY: clean-desktop
-clean:
+clean-desktop:
 	cargo clean -p $(CRATE)
 	rm -rf $(DESKTOP_RESOURCES)
 	rm -rf $(DESKTOP_BINDINGS_DIR)
@@ -130,28 +137,87 @@ desktop-bindings:
 		--language kotlin \
 		--out-dir $(DESKTOP_BINDINGS_DIR)
 
+.PHONY: linux/x86_64
+linux/x86_64:
+	rustup target add x86_64-unknown-linux-gnu
+	cargo build -p $(CRATE) --target x86_64-unknown-linux-gnu --release
+
+.PHONY: linux/aarch64
+linux/aarch64:
+	rustup target add aarch64-unknown-linux-gnu 
+	cargo build -p $(CRATE) --target aarch64-unknown-linux-gnu --release	
+
 .PHONY: desktop-linux
 desktop-linux:
-	cargo build -p $(CRATE) --release
 	@mkdir -p $(DESKTOP_RESOURCES)/linux-x86-64
-	cp target/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-x86-64/
+	cp target/x86_64-unknown-linux-gnu/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-x86-64/
+
+	@mkdir -p $(DESKTOP_RESOURCES)/linux-aarch64
+	cp target/aarch64-unknown-linux-gnu/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-aarch64/
+
 	$(MAKE) desktop-jar OS_NAME=linux
 
+.PHONY: macos-targets
+macos-targets:
+	@for t in $(MACOS_TARGETS); do \
+		rustup target add $$t; \
+	done
+
+.PHONY: macos-libs
+macos-libs: macos-targets
+	cargo build -p $(CRATE) --target aarch64-apple-darwin --release
+	cargo build -p $(CRATE) --target x86_64-apple-darwin --release	
+
 .PHONY: desktop-macos
-desktop-macos:
-	cargo build -p $(CRATE) --release
-	$(eval ARCH := $(shell uname -m | sed 's/arm64/aarch64/'))
-	@mkdir -p $(DESKTOP_RESOURCES)/darwin-$(ARCH)
-	cp target/release/libuniffi_ooniprobe.dylib $(DESKTOP_RESOURCES)/darwin-$(ARCH)/
+desktop-macos: macos-libs
+	@mkdir -p $(DESKTOP_RESOURCES)/darwin-universal
+	lipo -create \
+		target/aarch64-apple-darwin/release/libuniffi_ooniprobe.dylib \
+		target/x86_64-apple-darwin/release/libuniffi_ooniprobe.dylib \
+		-output $(DESKTOP_RESOURCES)/darwin-universal/libuniffi_ooniprobe.dylib
+
 	$(MAKE) desktop-jar OS_NAME=macos
 
+.PHONY: windows
+windows:
+	rustup target add x86_64-pc-windows-gnu
+	cargo build -p $(CRATE) --target x86_64-pc-windows-gnu --release
+
 .PHONY: desktop-windows
-desktop-windows:
-	cargo build -p $(CRATE) --release
+desktop-windows: windows
 	@mkdir -p $(DESKTOP_RESOURCES)/win32-x86-64
-	cp target/release/uniffi_ooniprobe.dll $(DESKTOP_RESOURCES)/win32-x86-64/
+	cp target/x86_64-pc-windows-gnu/release/uniffi_ooniprobe.dll $(DESKTOP_RESOURCES)/win32-x86-64/
 	$(MAKE) desktop-jar OS_NAME=windows
 
 .PHONY: desktop-jar
 desktop-jar: desktop-bindings
 	cd $(DESKTOP_DIR) && ./gradlew jar -PosName=$(OS_NAME)
+
+.PHONY: ffi-header
+ffi-header:
+	@mkdir -p $(STATICLIB_DIR)/include	
+	cargo run -p cbindgen-gen -- \
+		--config $(CRATE)/cbindgen.toml \
+		--lang c \
+		--output $(HEADER) \
+		$(CRATE)/src/capi.rs
+
+.PHONY: staticlib-linux
+staticlib-linux:
+	@mkdir -p $(STATICLIB_DIR)/linux/amd64 $(STATICLIB_DIR)/linux/arm64
+	cp target/x86_64-unknown-linux-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/amd64/
+	cp target/aarch64-unknown-linux-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/arm64/
+	$(MAKE) ffi-header
+
+.PHONY: staticlib-macos
+staticlib-macos: macos-libs
+	@mkdir -p $(STATICLIB_DIR)/darwin/arm64 $(STATICLIB_DIR)/darwin/amd64
+	cp target/aarch64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/arm64/
+	cp target/x86_64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/amd64/
+	$(MAKE) ffi-header
+
+.PHONY: staticlib-windows
+staticlib-windows: windows
+	@mkdir -p $(STATICLIB_DIR)/windows/amd64
+	cp target/x86_64-pc-windows-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/windows/amd64/
+	$(MAKE) ffi-header

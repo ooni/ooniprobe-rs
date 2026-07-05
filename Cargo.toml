@@ -2,7 +2,8 @@
 members = [
     "ooniprobe-services",
     "ooniprobe-ffi",
-    "uniffi-bindgen"
+    "uniffi-bindgen",
+    "cbindgen-gen"
 ]
 resolver = "2"
 

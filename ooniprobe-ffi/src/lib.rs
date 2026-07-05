@@ -1,3 +1,4 @@
+pub mod capi;
 pub mod client;
 pub mod errors;
 pub mod userauth;

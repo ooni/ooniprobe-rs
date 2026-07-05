@@ -1,0 +1,12 @@
+[package]
+name = "cbindgen-gen"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cbindgen-gen"
+path = "src/main.rs"
+
+[dependencies]
+cbindgen = "0.27"
+clap = { version = "4", features = ["derive"] }
