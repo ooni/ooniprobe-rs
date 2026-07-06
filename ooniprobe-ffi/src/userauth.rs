@@ -120,6 +120,7 @@ pub fn userauth_register(
     public_params: String,
     manifest_version: String,
     proxy: Option<String>,
+    timeout: Option<f32>,
 ) -> Result<CredentialResult, OoniError> {
     // initialize user state with public params
     let pp = decode_public_params(&public_params)?;
@@ -139,7 +140,7 @@ pub fn userauth_register(
     let json_payload = serde_json::to_string(&payload)?;
 
     // make the API call
-    let client = build_client(&url, proxy.as_deref())?;
+    let client = build_client(&url, proxy.as_deref(), timeout)?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))
@@ -190,6 +191,7 @@ pub fn userauth_submit(
     probe_cc: String,
     probe_asn: String,
     proxy: Option<String>,
+    timeout: Option<f32>,
     credential_config: Option<CredentialConfig>,
 ) -> Result<CredentialResult, OoniError> {
     let (submit_payload, auth_state) = match credential_config {
@@ -250,7 +252,7 @@ pub fn userauth_submit(
     let json_payload = serde_json::to_string(&submit_payload)?;
 
     // make the API call
-    let client = build_client(&url, proxy.as_deref())?;
+    let client = build_client(&url, proxy.as_deref(), timeout)?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))
@@ -321,9 +323,14 @@ mod tests {
         let public_params = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=";
         let manifest_version = "TjxIhQyJHRZsqmidU_coSEl2dZUiBGvL";
 
-        let result =
-            userauth_register(url, public_params.to_string(), manifest_version.to_string(), None)
-                .expect("The FFI call itself should not throw an OoniError");
+        let result = userauth_register(
+            url,
+            public_params.to_string(),
+            manifest_version.to_string(),
+            None,
+            None,
+        )
+        .expect("The FFI call itself should not throw an OoniError");
 
         assert_eq!(
             result.response.status_code, 200,
@@ -350,6 +357,7 @@ mod tests {
             format!("{BASE_URL}/api/v1/sign_credential"),
             public_params.clone(),
             manifest_version.clone(),
+            None,
             None,
         )
         .expect("Registration failed");
@@ -389,6 +397,7 @@ mod tests {
             measurement_content,
             probe_cc.clone(),
             probe_asn.clone(),
+            None,
             None,
             credential_config,
         )

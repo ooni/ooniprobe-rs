@@ -48,6 +48,10 @@ unsafe fn c_string_to_owned(ptr: *const c_char) -> Option<String> {
     CStr::from_ptr(ptr).to_str().ok().map(|s| s.to_owned())
 }
 
+fn timeout_from_secs(timeout: f32) -> Option<f32> {
+    (timeout > 0.0).then_some(timeout)
+}
+
 /// Register and obtain an initial credential.
 #[no_mangle]
 pub unsafe extern "C" fn userauth_register(
@@ -55,6 +59,7 @@ pub unsafe extern "C" fn userauth_register(
     public_params: *const c_char,
     manifest_version: *const c_char,
     proxy: *const c_char,
+    timeout: f32,
 ) -> ClientResponse {
     let (Some(url), Some(public_params), Some(manifest_version)) = (
         c_string_to_owned(url),
@@ -66,7 +71,7 @@ pub unsafe extern "C" fn userauth_register(
 
     let proxy = c_string_to_owned(proxy);
 
-    match userauth_register_impl(url, public_params, manifest_version, proxy) {
+    match userauth_register_impl(url, public_params, manifest_version, proxy, timeout_from_secs(timeout)) {
         Ok(result) => {
             let payload = json!({
                 "credential": result.credential,
@@ -87,6 +92,7 @@ pub unsafe extern "C" fn userauth_submit(
     probe_cc: *const c_char,
     probe_asn: *const c_char,
     proxy: *const c_char,
+    timeout: f32,
     credential_config_json: *const c_char,
 ) -> ClientResponse {
     let (Some(url), Some(content), Some(probe_cc), Some(probe_asn)) = (
@@ -110,7 +116,15 @@ pub unsafe extern "C" fn userauth_submit(
         None => None,
     };
 
-    match userauth_submit_impl(url, content, probe_cc, probe_asn, proxy, credential_config) {
+    match userauth_submit_impl(
+        url,
+        content,
+        probe_cc,
+        probe_asn,
+        proxy,
+        timeout_from_secs(timeout),
+        credential_config,
+    ) {
         Ok(result) => {
             let payload = json!({
                 "credential": result.credential,
@@ -227,6 +241,7 @@ mod tests {
                 public_params.as_ptr(),
                 manifest_version.as_ptr(),
                 proxy.as_ptr(),
+                0.0,
             )
         };
         // We only assert routing; the mock's canned body isn't a valid registration
@@ -250,6 +265,7 @@ mod tests {
                 public_params.as_ptr(),
                 manifest_version.as_ptr(),
                 ptr::null(),
+                0.0,
             )
         };
         unsafe { client_response_free(response) };
@@ -269,6 +285,7 @@ mod tests {
                 public_params.as_ptr(),
                 manifest_version.as_ptr(),
                 ptr::null(),
+                0.0,
             )
         };
         let error = unsafe { read_field(response.error) };
@@ -291,6 +308,7 @@ mod tests {
                 public_params.as_ptr(),
                 manifest_version.as_ptr(),
                 ptr::null(),
+                0.0,
             )
         };
         let error = unsafe { read_field(response.error) };
@@ -321,6 +339,7 @@ mod tests {
                 probe_cc.as_ptr(),
                 probe_asn.as_ptr(),
                 proxy.as_ptr(),
+                0.0,
                 ptr::null(),
             )
         };
@@ -348,6 +367,7 @@ mod tests {
                 probe_cc.as_ptr(),
                 probe_asn.as_ptr(),
                 ptr::null(),
+                0.0,
                 bad_config.as_ptr(),
             )
         };

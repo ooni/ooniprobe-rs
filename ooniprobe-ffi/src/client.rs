@@ -48,13 +48,19 @@ impl From<Response> for HttpResponse {
     }
 }
 
-pub fn build_client(url: &str, proxy: Option<&str>) -> Result<Client, OoniError> {
+const DEFAULT_TIMEOUT_SECS: f32 = 30.0;
+
+pub fn build_client(
+    url: &str,
+    proxy: Option<&str>,
+    timeout: Option<f32>,
+) -> Result<Client, OoniError> {
     let mut options = ClientOptions::new();
 
     options.set_proxy_url(proxy);
     options.set_base_url(Some(url));
-    options.set_timeout(Some(10.0));
-    
+    options.set_timeout(Some(timeout.unwrap_or(DEFAULT_TIMEOUT_SECS)));
+
     Client::builder()
         .set_options(options)
         .build()
@@ -66,8 +72,9 @@ pub fn client_get(
     headers: Vec<KeyValue>,
     query: Vec<KeyValue>,
     proxy: Option<String>,
+    timeout: Option<f32>,
 ) -> Result<HttpResponse, OoniError> {
-    let client = build_client(&url, proxy.as_deref())?;
+    let client = build_client(&url, proxy.as_deref(), timeout)?;
 
     let mut header_map = HeaderMap::new();
     for kv in headers {
@@ -79,6 +86,8 @@ pub fn client_get(
 
         header_map.insert(name, value);
     }
+
+    let query: Vec<(String, String)> = query.into_iter().map(|kv| (kv.key, kv.value)).collect();
 
     let request = client
         .request("GET", &url)
@@ -95,8 +104,9 @@ pub fn client_post(
     headers: Vec<KeyValue>,
     payload: String,
     proxy: Option<String>,
+    timeout: Option<f32>,
 ) -> Result<HttpResponse, OoniError> {
-    let client = build_client(&url, proxy.as_deref())?;
+    let client = build_client(&url, proxy.as_deref(), timeout)?;
 
     let mut header_map = HeaderMap::new();
     for kv in headers {
@@ -128,7 +138,8 @@ mod tests {
     #[test]
     fn get_manifest_returns_manifest_version_and_public_params() {
         let url = format!("{BASE_URL}/api/v1/manifest");
-        let resp = client_get(url, vec![], vec![], None).expect("GET manifest should succeed");
+        let resp =
+            client_get(url, vec![], vec![], None, None).expect("GET manifest should succeed");
 
         assert_eq!(resp.status_code, 200, "incorrect status_code: {:?}", resp);
 
@@ -174,6 +185,7 @@ mod tests {
                 value: "application/json".to_string(),
             }],
             payload,
+            None,
             None,
         )
         .expect("POST check-in should succeed");
@@ -225,7 +237,8 @@ mod tests {
                 value: "application/json".to_string(),
             }],
             payload,
-            None
+            None,
+            None,
         )
         .expect("POST check-in should succeed");
 
