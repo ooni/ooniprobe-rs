@@ -174,12 +174,7 @@ mod tests {
             Some(CStr::from_ptr(ptr).to_str().unwrap().to_owned())
         }
     }
-
-    // Known-good public params / manifest (same fixtures the userauth tests use),
-    // so `userauth_register` gets past its local crypto and issues the HTTP POST.
-    const PUBLIC_PARAMS: &str = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=";
-    const MANIFEST_VERSION: &str = "TjxIhQyJHRZsqmidU_coSEl2dZUiBGvL";
-
+    
     fn start_mock_proxy() -> (String, Arc<AtomicUsize>) {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock proxy");
         let addr = listener.local_addr().expect("local addr");
@@ -214,8 +209,9 @@ mod tests {
         (format!("http://{addr}"), hits)
     }
 
-    /// The `proxy` parameter must thread through the C ABI: pointing it at a local
-    /// mock proxy causes the outbound request to land on that proxy.
+    const PUBLIC_PARAMS: &str = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=";
+    const MANIFEST_VERSION: &str = "TjxIhQyJHRZsqmidU_coSEl2dZUiBGvL";
+
     #[test]
     fn userauth_register_routes_through_proxy() {
         let (proxy_url, hits) = start_mock_proxy();
@@ -240,7 +236,6 @@ mod tests {
         assert_eq!(hits.load(Ordering::SeqCst), 1, "request should route through the proxy");
     }
 
-    /// A null `proxy` pointer is valid and maps to `None` (no proxy).
     #[test]
     fn userauth_register_accepts_null_proxy() {
         let (_proxy_url, hits) = start_mock_proxy();
@@ -259,7 +254,6 @@ mod tests {
         };
         unsafe { client_response_free(response) };
 
-        // With no proxy configured, the mock proxy must not be contacted.
         assert_eq!(hits.load(Ordering::SeqCst), 0, "null proxy must not route through the mock");
     }
 
@@ -287,10 +281,8 @@ mod tests {
 
     #[test]
     fn register_with_invalid_public_params_returns_error() {
-        // Invalid base64 public params fails during local decoding, before any
-        // network call — so this is fully offline and deterministic.
         let url = CString::new("http://example.invalid/api/v1/sign_credential").unwrap();
-        let public_params = CString::new("not-valid-base64-!!!").unwrap();
+        let public_params = CString::new("not-valid-base64").unwrap();
         let manifest_version = CString::new(MANIFEST_VERSION).unwrap();
 
         let response = unsafe {
@@ -314,9 +306,6 @@ mod tests {
 
     #[test]
     fn submit_without_credential_routes_through_proxy() {
-        // With a null credential config, `userauth_submit` just posts the content.
-        // Against the mock proxy's `200 {}` reply it returns a success response
-        // (no updated credential), which proves the proxy path end-to-end.
         let (proxy_url, hits) = start_mock_proxy();
 
         let url = CString::new("http://example.invalid/api/v1/submit_measurement").unwrap();
@@ -346,7 +335,6 @@ mod tests {
 
     #[test]
     fn submit_with_invalid_credential_config_returns_error() {
-        // Malformed credential-config JSON is rejected before any network call.
         let url = CString::new("http://example.invalid/api/v1/submit_measurement").unwrap();
         let content = CString::new("{}").unwrap();
         let probe_cc = CString::new("IT").unwrap();
@@ -408,7 +396,6 @@ mod tests {
 
     #[test]
     fn client_response_free_handles_null_fields() {
-        // Freeing an all-null response must be a safe no-op.
         let response = ClientResponse {
             json: ptr::null_mut(),
             error: ptr::null_mut(),
