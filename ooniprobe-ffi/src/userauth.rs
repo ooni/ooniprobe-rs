@@ -4,13 +4,13 @@ use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use bincode;
 use cmz::cmz_group_init;
-use curve25519_dalek::{ristretto::RistrettoPoint as G};
+use curve25519_dalek::ristretto::RistrettoPoint as G;
 use ooniauth_core::{
     registration::UserAuthCredential,
-    submit::{digest_point, submit_measurement_hash}
+    submit::{digest_point, submit_measurement_hash},
 };
 use serde::{Deserialize, Serialize};
-use sha2::{Sha512};
+use sha2::Sha512;
 
 use crate::client::build_client;
 use crate::errors::OoniError;
@@ -71,7 +71,7 @@ struct SubmitMeasurementResponse {
     verification_status: String,
     submit_response: Option<String>,
     protocol_version: String,
-    error: Option<String>
+    error: Option<String>,
 }
 
 fn b64_encode(b: &[u8]) -> String {
@@ -203,7 +203,7 @@ pub fn userauth_submit(
             let credential = decode_credential(&config.credential)?;
             user_state.set_credential(credential);
 
-            let measurement_hash = submit_measurement_hash(content.as_bytes()); 
+            let measurement_hash = submit_measurement_hash(content.as_bytes());
 
             // Create submit request
             let mut rng = rand::thread_rng();
@@ -218,7 +218,7 @@ pub fn userauth_submit(
                 },
                 Range {
                     start: config.measurement_count_range.min,
-                    end: u32::MAX
+                    end: u32::MAX,
                 },
             )?;
 
@@ -389,8 +389,14 @@ mod tests {
             credential: credential,
             public_params: public_params,
             manifest_version: manifest_version,
-            age_range: ParamRange { min: 2461110, max: 2826140 },
-            measurement_count_range: ParamRange { min: 0, max: 10000000 },
+            age_range: ParamRange {
+                min: 2461110,
+                max: 2826140,
+            },
+            measurement_count_range: ParamRange {
+                min: 0,
+                max: 10000000,
+            },
         });
         let submit_result = userauth_submit(
             submit_url,

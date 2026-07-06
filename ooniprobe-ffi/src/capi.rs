@@ -71,7 +71,13 @@ pub unsafe extern "C" fn userauth_register(
 
     let proxy = c_string_to_owned(proxy);
 
-    match userauth_register_impl(url, public_params, manifest_version, proxy, timeout_from_secs(timeout)) {
+    match userauth_register_impl(
+        url,
+        public_params,
+        manifest_version,
+        proxy,
+        timeout_from_secs(timeout),
+    ) {
         Ok(result) => {
             let payload = json!({
                 "credential": result.credential,
@@ -188,7 +194,7 @@ mod tests {
             Some(CStr::from_ptr(ptr).to_str().unwrap().to_owned())
         }
     }
-    
+
     fn start_mock_proxy() -> (String, Arc<AtomicUsize>) {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock proxy");
         let addr = listener.local_addr().expect("local addr");
@@ -248,7 +254,11 @@ mod tests {
         // reply, so `response` may carry an error — either way it must be freed.
         unsafe { client_response_free(response) };
 
-        assert_eq!(hits.load(Ordering::SeqCst), 1, "request should route through the proxy");
+        assert_eq!(
+            hits.load(Ordering::SeqCst),
+            1,
+            "request should route through the proxy"
+        );
     }
 
     #[test]
@@ -270,7 +280,11 @@ mod tests {
         };
         unsafe { client_response_free(response) };
 
-        assert_eq!(hits.load(Ordering::SeqCst), 0, "null proxy must not route through the mock");
+        assert_eq!(
+            hits.load(Ordering::SeqCst),
+            0,
+            "null proxy must not route through the mock"
+        );
     }
 
     #[test]
@@ -347,7 +361,11 @@ mod tests {
         let json = unsafe { read_field(response.json) };
         unsafe { client_response_free(response) };
 
-        assert_eq!(hits.load(Ordering::SeqCst), 1, "request should route through the proxy");
+        assert_eq!(
+            hits.load(Ordering::SeqCst),
+            1,
+            "request should route through the proxy"
+        );
         assert!(error.is_none(), "unexpected error: {error:?}");
         assert!(json.is_some(), "expected a JSON payload");
     }
@@ -387,8 +405,7 @@ mod tests {
         let probe_asn = CString::new("AS117").unwrap();
         let probe_cc = CString::new("IT").unwrap();
 
-        let response =
-            unsafe { get_probe_id(ptr::null(), probe_asn.as_ptr(), probe_cc.as_ptr()) };
+        let response = unsafe { get_probe_id(ptr::null(), probe_asn.as_ptr(), probe_cc.as_ptr()) };
         let error = unsafe { read_field(response.error) };
         let json = unsafe { read_field(response.json) };
         unsafe { client_response_free(response) };
@@ -403,15 +420,17 @@ mod tests {
         let probe_asn = CString::new("AS117").unwrap();
         let probe_cc = CString::new("IT").unwrap();
 
-        let response = unsafe {
-            get_probe_id(credential.as_ptr(), probe_asn.as_ptr(), probe_cc.as_ptr())
-        };
+        let response =
+            unsafe { get_probe_id(credential.as_ptr(), probe_asn.as_ptr(), probe_cc.as_ptr()) };
         let error = unsafe { read_field(response.error) };
         let json = unsafe { read_field(response.json) };
         unsafe { client_response_free(response) };
 
         assert!(json.is_none(), "json should be null on error");
-        assert!(error.is_some(), "expected an error for an invalid credential");
+        assert!(
+            error.is_some(),
+            "expected an error for an invalid credential"
+        );
     }
 
     #[test]

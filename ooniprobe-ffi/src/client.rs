@@ -1,6 +1,6 @@
 use crate::errors::OoniError;
 
-use ooniprobe_services::client::{Client, Response, ClientOptions};
+use ooniprobe_services::client::{Client, ClientOptions, Response};
 use serde::{Deserialize, Serialize};
 
 #[cfg(not(target_os = "ios"))]
