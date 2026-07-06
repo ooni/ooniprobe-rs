@@ -30,11 +30,11 @@ impl ClientOptions {
             base_url: None,
             timeout: None,
             user_agent: None,
-            proxy_url: None
+            proxy_url: None,
         }
     }
 
-   pub fn set_base_url(&mut self, base_url: Option<&str>) {
+    pub fn set_base_url(&mut self, base_url: Option<&str>) {
         self.base_url = base_url.map(String::from);
     }
 

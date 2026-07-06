@@ -4,7 +4,8 @@ namespace ooniprobe {
         string url,
         sequence<KeyValue> headers,
         sequence<KeyValue> query,
-        string? proxy
+        string? proxy,
+        f32? timeout
     );
 
     [Throws=OoniError]
@@ -12,7 +13,8 @@ namespace ooniprobe {
         string url,
         sequence<KeyValue> headers,
         string payload,
-        string? proxy
+        string? proxy,
+        f32? timeout
     );
 
     [Throws=OoniError]
@@ -20,7 +22,8 @@ namespace ooniprobe {
         string url,
         string public_params,
         string manifest_version,
-        string? proxy
+        string? proxy,
+        f32? timeout
     );
 
     [Throws=OoniError]
@@ -30,6 +33,7 @@ namespace ooniprobe {
         string probe_cc,
         string probe_asn,
         string? proxy,
+        f32? timeout,
         CredentialConfig? credential_config
     );
 
