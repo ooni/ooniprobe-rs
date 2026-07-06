@@ -128,8 +128,7 @@ impl ClientBuilder {
         }
 
         if let Some(proxy_url) = self.client_options.proxy_url {
-            let proxy = reqwest::Proxy::all(&proxy_url)
-                .map_err(|e| Error::Reqwest(Box::new(e)))?;
+            let proxy = reqwest::Proxy::all(&proxy_url).map_err(|e| Error::Reqwest(Box::new(e)))?;
 
             client_builder = client_builder.proxy(proxy);
         }

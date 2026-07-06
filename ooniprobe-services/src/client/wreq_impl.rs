@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
 use mime::Mime;
-use std::{sync::Arc};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::runtime::Runtime;
 use wreq::tls::CertStore;
@@ -139,9 +139,8 @@ impl ClientBuilder {
         }
 
         if let Some(proxy_url) = self.client_options.proxy_url {
-            let proxy = wreq::Proxy::all(proxy_url)
-                .map_err(|e| Error::Wreq(Box::new(e)))?;
-        
+            let proxy = wreq::Proxy::all(proxy_url).map_err(|e| Error::Wreq(Box::new(e)))?;
+
             client_builder = client_builder.proxy(proxy);
         }
 
