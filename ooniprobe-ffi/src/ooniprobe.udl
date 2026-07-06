@@ -3,21 +3,24 @@ namespace ooniprobe {
     HttpResponse client_get(
         string url,
         sequence<KeyValue> headers,
-        sequence<KeyValue> query
+        sequence<KeyValue> query,
+        string? proxy
     );
 
     [Throws=OoniError]
     HttpResponse client_post(
         string url,
         sequence<KeyValue> headers,
-        string payload
+        string payload,
+        string? proxy
     );
 
     [Throws=OoniError]
     CredentialResult userauth_register(
         string url,
         string public_params,
-        string manifest_version
+        string manifest_version,
+        string? proxy
     );
 
     [Throws=OoniError]
@@ -26,6 +29,7 @@ namespace ooniprobe {
         string content,
         string probe_cc,
         string probe_asn,
+        string? proxy,
         CredentialConfig? credential_config
     );
 

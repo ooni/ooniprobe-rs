@@ -1,6 +1,6 @@
 use crate::errors::OoniError;
 
-use ooniprobe_services::client::{Client, Response};
+use ooniprobe_services::client::{Client, Response, ClientOptions};
 use serde::{Deserialize, Serialize};
 
 #[cfg(not(target_os = "ios"))]
@@ -48,8 +48,15 @@ impl From<Response> for HttpResponse {
     }
 }
 
-pub fn build_client() -> Result<Client, OoniError> {
+pub fn build_client(url: &str, proxy: Option<&str>) -> Result<Client, OoniError> {
+    let mut options = ClientOptions::new();
+
+    options.set_proxy_url(proxy);
+    options.set_base_url(Some(url));
+    options.set_timeout(Some(10.0));
+    
     Client::builder()
+        .set_options(options)
         .build()
         .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))
 }
@@ -58,8 +65,9 @@ pub fn client_get(
     url: String,
     headers: Vec<KeyValue>,
     query: Vec<KeyValue>,
+    proxy: Option<String>,
 ) -> Result<HttpResponse, OoniError> {
-    let client = build_client()?;
+    let client = build_client(&url, proxy.as_deref())?;
 
     let mut header_map = HeaderMap::new();
     for kv in headers {
@@ -86,8 +94,9 @@ pub fn client_post(
     url: String,
     headers: Vec<KeyValue>,
     payload: String,
+    proxy: Option<String>,
 ) -> Result<HttpResponse, OoniError> {
-    let client = build_client()?;
+    let client = build_client(&url, proxy.as_deref())?;
 
     let mut header_map = HeaderMap::new();
     for kv in headers {
@@ -119,7 +128,7 @@ mod tests {
     #[test]
     fn get_manifest_returns_manifest_version_and_public_params() {
         let url = format!("{BASE_URL}/api/v1/manifest");
-        let resp = client_get(url, vec![], vec![]).expect("GET manifest should succeed");
+        let resp = client_get(url, vec![], vec![], None).expect("GET manifest should succeed");
 
         assert_eq!(resp.status_code, 200, "incorrect status_code: {:?}", resp);
 
@@ -165,6 +174,7 @@ mod tests {
                 value: "application/json".to_string(),
             }],
             payload,
+            None,
         )
         .expect("POST check-in should succeed");
 
@@ -215,6 +225,7 @@ mod tests {
                 value: "application/json".to_string(),
             }],
             payload,
+            None
         )
         .expect("POST check-in should succeed");
 
