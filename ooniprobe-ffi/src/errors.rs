@@ -17,6 +17,18 @@ pub enum OoniError {
     #[error("HTTP client error: {0}")]
     HttpClientError(String),
 
+    #[error("Request timed out: {0}")]
+    TimeoutError(String),
+
+    #[error("Connection error: {0}")]
+    ConnectionError(String),
+
+    #[error("Request error: {0}")]
+    RequestError(String),
+
+    #[error("Response error: {0}")]
+    ResponseError(String),
+
     #[error("Crypto error: {0}")]
     CryptoError(String),
 
@@ -44,13 +56,15 @@ impl From<bincode::Error> for OoniError {
 
 impl From<ooniprobe_services::client::Error> for OoniError {
     fn from(e: ooniprobe_services::client::Error) -> Self {
-        OoniError::HttpClientError(format!("{:?}", e))
-    }
-}
-
-impl From<wreq::Error> for OoniError {
-    fn from(e: wreq::Error) -> Self {
-        OoniError::HttpClientError(e.to_string())
+        use ooniprobe_services::client::ErrorKind;
+        let msg = format!("{:?}", e);
+        match e.kind() {
+            ErrorKind::Timeout => OoniError::TimeoutError(msg),
+            ErrorKind::Connection => OoniError::ConnectionError(msg),
+            ErrorKind::Request => OoniError::RequestError(msg),
+            ErrorKind::Response => OoniError::ResponseError(msg),
+            ErrorKind::Other => OoniError::HttpClientError(msg),
+        }
     }
 }
 

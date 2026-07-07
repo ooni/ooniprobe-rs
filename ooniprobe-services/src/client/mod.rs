@@ -63,6 +63,58 @@ pub enum Error {
     Reqwest(Box<reqwest::Error>),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorKind {
+    Timeout,
+    Connection,
+    Request,
+    Response,
+    Other,
+}
+
+impl Error {
+    pub fn kind(&self) -> ErrorKind {
+        match self {
+            Error::UndetectedCharset => ErrorKind::Response,
+            Error::InvalidHttpMethod | Error::Serialization | Error::Io(_) => ErrorKind::Other,
+            #[cfg(not(target_os = "ios"))]
+            Error::Wreq(e) => classify_wreq(e),
+            #[cfg(target_os = "ios")]
+            Error::Reqwest(e) => classify_reqwest(e),
+        }
+    }
+}
+
+#[cfg(not(target_os = "ios"))]
+fn classify_wreq(e: &wreq::Error) -> ErrorKind {
+    if e.is_timeout() {
+        ErrorKind::Timeout
+    } else if e.is_connect() || e.is_proxy_connect() || e.is_connection_reset() {
+        ErrorKind::Connection
+    } else if e.is_body() || e.is_decode() {
+        ErrorKind::Response
+    } else if e.is_request() {
+        ErrorKind::Request
+    } else {
+        ErrorKind::Other
+    }
+}
+
+#[cfg(target_os = "ios")]
+fn classify_reqwest(e: &reqwest::Error) -> ErrorKind {
+    if e.is_timeout() {
+        ErrorKind::Timeout
+    } else if e.is_connect() {
+        ErrorKind::Connection
+    } else if e.is_body() || e.is_decode() {
+        ErrorKind::Response
+    } else if e.is_request() {
+        ErrorKind::Request
+    } else {
+        ErrorKind::Other
+    }
+}
+
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Self {
         Self::Io(error)
