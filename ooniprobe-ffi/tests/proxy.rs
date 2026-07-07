@@ -3,7 +3,7 @@
 mod common;
 
 use common::start_server;
-use uniffi_ooniprobe::{client_get, client_post};
+use uniffi_ooniprobe::{client_get, client_post, OoniError};
 
 #[test]
 fn client_get_routes_through_proxy() {
@@ -95,5 +95,8 @@ fn dead_proxy_yields_connection_error() {
         Some("http://127.0.0.1:1".to_string()),
         None,
     );
-    assert!(result.is_err(), "dead proxy should error, got: {result:?}");
+    assert!(
+        matches!(result, Err(OoniError::ConnectionError(_))),
+        "dead proxy should be a ConnectionError, got: {result:?}"
+    );
 }

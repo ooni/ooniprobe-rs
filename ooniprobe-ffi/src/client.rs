@@ -64,7 +64,7 @@ pub fn build_client(
     Client::builder()
         .set_options(options)
         .build()
-        .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))
+        .map_err(OoniError::from)
 }
 
 pub fn client_get(
