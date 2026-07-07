@@ -5,7 +5,7 @@ mod common;
 use std::time::Duration;
 
 use common::{start_server, start_server_with_delay};
-use uniffi_ooniprobe::{client_get, client_post, KeyValue};
+use uniffi_ooniprobe::{client_get, client_post, KeyValue, OoniError};
 
 fn kv(key: &str, value: &str) -> KeyValue {
     KeyValue {
@@ -93,8 +93,23 @@ fn explicit_timeout_is_enforced() {
     let server = start_server_with_delay("ok", Duration::from_millis(1500));
     let result = client_get(format!("{}/", server.url), vec![], vec![], None, Some(0.2));
     assert!(
-        result.is_err(),
-        "slow response should time out, got: {result:?}"
+        matches!(result, Err(OoniError::TimeoutError(_))),
+        "slow response should be a TimeoutError, got: {result:?}"
+    );
+}
+
+#[test]
+fn connection_refused_is_connection_error() {
+    let result = client_get(
+        "http://127.0.0.1:1/".to_string(),
+        vec![],
+        vec![],
+        None,
+        None,
+    );
+    assert!(
+        matches!(result, Err(OoniError::ConnectionError(_))),
+        "refused connection should be a ConnectionError, got: {result:?}"
     );
 }
 
