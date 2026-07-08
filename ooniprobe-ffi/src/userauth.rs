@@ -121,6 +121,7 @@ pub fn userauth_register(
     manifest_version: String,
     proxy: Option<String>,
     timeout: Option<f32>,
+    user_agent: Option<String>,
 ) -> Result<CredentialResult, OoniError> {
     // initialize user state with public params
     let pp = decode_public_params(&public_params)?;
@@ -140,7 +141,7 @@ pub fn userauth_register(
     let json_payload = serde_json::to_string(&payload)?;
 
     // make the API call
-    let client = build_client(&url, proxy.as_deref(), timeout)?;
+    let client = build_client(&url, proxy.as_deref(), timeout, user_agent.as_deref())?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))
@@ -192,6 +193,7 @@ pub fn userauth_submit(
     probe_asn: String,
     proxy: Option<String>,
     timeout: Option<f32>,
+    user_agent: Option<String>,
     credential_config: Option<CredentialConfig>,
 ) -> Result<CredentialResult, OoniError> {
     let (submit_payload, auth_state) = match credential_config {
@@ -252,7 +254,7 @@ pub fn userauth_submit(
     let json_payload = serde_json::to_string(&submit_payload)?;
 
     // make the API call
-    let client = build_client(&url, proxy.as_deref(), timeout)?;
+    let client = build_client(&url, proxy.as_deref(), timeout, user_agent.as_deref())?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))
@@ -329,6 +331,7 @@ mod tests {
             manifest_version.to_string(),
             None,
             None,
+            None,
         )
         .expect("The FFI call itself should not throw an OoniError");
 
@@ -357,6 +360,7 @@ mod tests {
             format!("{BASE_URL}/api/v1/sign_credential"),
             public_params.clone(),
             manifest_version.clone(),
+            None,
             None,
             None,
         )
@@ -403,6 +407,7 @@ mod tests {
             measurement_content,
             probe_cc.clone(),
             probe_asn.clone(),
+            None,
             None,
             None,
             credential_config,

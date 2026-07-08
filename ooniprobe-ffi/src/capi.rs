@@ -60,6 +60,7 @@ pub unsafe extern "C" fn userauth_register(
     manifest_version: *const c_char,
     proxy: *const c_char,
     timeout: f32,
+    user_agent: *const c_char,
 ) -> ClientResponse {
     let (Some(url), Some(public_params), Some(manifest_version)) = (
         c_string_to_owned(url),
@@ -70,6 +71,7 @@ pub unsafe extern "C" fn userauth_register(
     };
 
     let proxy = c_string_to_owned(proxy);
+    let user_agent = c_string_to_owned(user_agent);
 
     match userauth_register_impl(
         url,
@@ -77,6 +79,7 @@ pub unsafe extern "C" fn userauth_register(
         manifest_version,
         proxy,
         timeout_from_secs(timeout),
+        user_agent,
     ) {
         Ok(result) => {
             let payload = json!({
@@ -99,6 +102,7 @@ pub unsafe extern "C" fn userauth_submit(
     probe_asn: *const c_char,
     proxy: *const c_char,
     timeout: f32,
+    user_agent: *const c_char,
     credential_config_json: *const c_char,
 ) -> ClientResponse {
     let (Some(url), Some(content), Some(probe_cc), Some(probe_asn)) = (
@@ -111,6 +115,7 @@ pub unsafe extern "C" fn userauth_submit(
     };
 
     let proxy = c_string_to_owned(proxy);
+    let user_agent = c_string_to_owned(user_agent);
 
     let credential_config = match c_string_to_owned(credential_config_json) {
         Some(raw) => match serde_json::from_str::<CredentialConfig>(&raw) {
@@ -129,6 +134,7 @@ pub unsafe extern "C" fn userauth_submit(
         probe_asn,
         proxy,
         timeout_from_secs(timeout),
+        user_agent,
         credential_config,
     ) {
         Ok(result) => {
@@ -248,6 +254,7 @@ mod tests {
                 manifest_version.as_ptr(),
                 proxy.as_ptr(),
                 0.0,
+                ptr::null(),
             )
         };
         // We only assert routing; the mock's canned body isn't a valid registration
@@ -276,6 +283,7 @@ mod tests {
                 manifest_version.as_ptr(),
                 ptr::null(),
                 0.0,
+                ptr::null(),
             )
         };
         unsafe { client_response_free(response) };
@@ -300,6 +308,7 @@ mod tests {
                 manifest_version.as_ptr(),
                 ptr::null(),
                 0.0,
+                ptr::null(),
             )
         };
         let error = unsafe { read_field(response.error) };
@@ -323,6 +332,7 @@ mod tests {
                 manifest_version.as_ptr(),
                 ptr::null(),
                 0.0,
+                ptr::null(),
             )
         };
         let error = unsafe { read_field(response.error) };
@@ -355,6 +365,7 @@ mod tests {
                 proxy.as_ptr(),
                 0.0,
                 ptr::null(),
+                ptr::null(),
             )
         };
         let error = unsafe { read_field(response.error) };
@@ -386,6 +397,7 @@ mod tests {
                 probe_asn.as_ptr(),
                 ptr::null(),
                 0.0,
+                ptr::null(),
                 bad_config.as_ptr(),
             )
         };

@@ -18,6 +18,7 @@ fn register_rejects_invalid_public_params() {
         MANIFEST_VERSION.to_string(),
         None,
         None,
+        None,
     );
     assert!(result.is_err(), "invalid public params should error");
 }
@@ -29,6 +30,7 @@ fn register_posts_to_server() {
         format!("{}/sign_credential", server.url),
         PUBLIC_PARAMS.to_string(),
         MANIFEST_VERSION.to_string(),
+        None,
         None,
         None,
     );
@@ -44,6 +46,7 @@ fn submit_without_credential_succeeds() {
         "{}".to_string(),
         "IT".to_string(),
         "AS117".to_string(),
+        None,
         None,
         None,
         None,
@@ -68,6 +71,7 @@ fn submit_routes_through_proxy() {
         Some(proxy.url.clone()),
         None,
         None,
+        None,
     )
     .expect("uncredentialed submit should succeed");
 
@@ -86,6 +90,7 @@ fn submit_enforces_timeout() {
         "AS117".to_string(),
         None,
         Some(0.2),
+        None,
         None,
     );
     assert!(
