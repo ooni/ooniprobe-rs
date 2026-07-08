@@ -49,17 +49,20 @@ impl From<Response> for HttpResponse {
 }
 
 const DEFAULT_TIMEOUT_SECS: f32 = 30.0;
+const DEFAULT_USER_AGENT: &str = "ooniprobe";
 
 pub fn build_client(
     url: &str,
     proxy: Option<&str>,
     timeout: Option<f32>,
+    user_agent: Option<&str>,
 ) -> Result<Client, OoniError> {
     let mut options = ClientOptions::new();
 
     options.set_proxy_url(proxy);
     options.set_base_url(Some(url));
     options.set_timeout(Some(timeout.unwrap_or(DEFAULT_TIMEOUT_SECS)));
+    options.set_user_agent(Some(user_agent.unwrap_or(DEFAULT_USER_AGENT)));
 
     Client::builder()
         .set_options(options)
@@ -73,8 +76,9 @@ pub fn client_get(
     query: Vec<KeyValue>,
     proxy: Option<String>,
     timeout: Option<f32>,
+    user_agent: Option<String>,
 ) -> Result<HttpResponse, OoniError> {
-    let client = build_client(&url, proxy.as_deref(), timeout)?;
+    let client = build_client(&url, proxy.as_deref(), timeout, user_agent.as_deref())?;
 
     let mut header_map = HeaderMap::new();
     for kv in headers {
@@ -105,8 +109,9 @@ pub fn client_post(
     payload: String,
     proxy: Option<String>,
     timeout: Option<f32>,
+    user_agent: Option<String>,
 ) -> Result<HttpResponse, OoniError> {
-    let client = build_client(&url, proxy.as_deref(), timeout)?;
+    let client = build_client(&url, proxy.as_deref(), timeout, user_agent.as_deref())?;
 
     let mut header_map = HeaderMap::new();
     for kv in headers {
@@ -138,8 +143,8 @@ mod tests {
     #[test]
     fn get_manifest_returns_manifest_version_and_public_params() {
         let url = format!("{BASE_URL}/api/v1/manifest");
-        let resp =
-            client_get(url, vec![], vec![], None, None).expect("GET manifest should succeed");
+        let resp = client_get(url, vec![], vec![], None, None, None)
+            .expect("GET manifest should succeed");
 
         assert_eq!(resp.status_code, 200, "incorrect status_code: {:?}", resp);
 
@@ -185,6 +190,7 @@ mod tests {
                 value: "application/json".to_string(),
             }],
             payload,
+            None,
             None,
             None,
         )
@@ -237,6 +243,7 @@ mod tests {
                 value: "application/json".to_string(),
             }],
             payload,
+            None,
             None,
             None,
         )

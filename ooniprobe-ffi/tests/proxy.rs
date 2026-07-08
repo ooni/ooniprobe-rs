@@ -16,6 +16,7 @@ fn client_get_routes_through_proxy() {
         vec![],
         Some(proxy.url.clone()),
         None,
+        None,
     )
     .expect("GET through proxy should succeed");
 
@@ -42,6 +43,7 @@ fn client_post_routes_through_proxy() {
         "hello".to_string(),
         Some(proxy.url.clone()),
         None,
+        None,
     )
     .expect("POST through proxy should succeed");
 
@@ -62,7 +64,7 @@ fn no_proxy_connects_directly() {
     let origin = start_server("origin-body");
     let proxy = start_server("proxy-body");
 
-    let resp = client_get(format!("{}/path", origin.url), vec![], vec![], None, None)
+    let resp = client_get(format!("{}/path", origin.url), vec![], vec![], None, None, None)
         .expect("direct GET should succeed");
 
     assert_eq!(resp.status_code, 200);
@@ -79,6 +81,7 @@ fn invalid_proxy_url_is_rejected() {
         vec![],
         Some("://missing-scheme".to_string()),
         None,
+        None,
     );
     assert!(
         result.is_err(),
@@ -93,6 +96,7 @@ fn dead_proxy_yields_connection_error() {
         vec![],
         vec![],
         Some("http://127.0.0.1:1".to_string()),
+        None,
         None,
     );
     assert!(

@@ -17,7 +17,7 @@ fn kv(key: &str, value: &str) -> KeyValue {
 #[test]
 fn get_parses_status_and_body() {
     let server = start_server("hello-body");
-    let resp = client_get(format!("{}/", server.url), vec![], vec![], None, None)
+    let resp = client_get(format!("{}/", server.url), vec![], vec![], None, None, None)
         .expect("GET should succeed");
 
     assert_eq!(resp.status_code, 200);
@@ -35,6 +35,7 @@ fn get_forwards_headers() {
         vec![],
         None,
         None,
+        None,
     )
     .expect("GET should succeed");
 
@@ -50,6 +51,7 @@ fn get_appends_query_params() {
         format!("{}/search", server.url),
         vec![],
         vec![kv("q", "hello"), kv("lang", "en")],
+        None,
         None,
         None,
     )
@@ -71,6 +73,7 @@ fn post_forwards_body() {
         r#"{"k":"v"}"#.to_string(),
         None,
         None,
+        None,
     )
     .expect("POST should succeed");
 
@@ -81,9 +84,39 @@ fn post_forwards_body() {
 }
 
 #[test]
+fn default_user_agent_is_ooniprobe() {
+    let server = start_server("ok");
+    client_get(format!("{}/", server.url), vec![], vec![], None, None, None)
+        .expect("GET should succeed");
+
+    let req = server.last_request().to_lowercase();
+    assert!(req.contains("user-agent: ooniprobe"), "missing default UA in: {req}");
+}
+
+#[test]
+fn user_agent_is_overridable() {
+    let server = start_server("ok");
+    client_get(
+        format!("{}/", server.url),
+        vec![],
+        vec![],
+        None,
+        None,
+        Some("my-custom-agent/1.2".to_string()),
+    )
+    .expect("GET should succeed");
+
+    let req = server.last_request();
+    assert!(
+        req.contains("user-agent: my-custom-agent/1.2"),
+        "missing overridden UA in: {req}"
+    );
+}
+
+#[test]
 fn default_timeout_allows_fast_response() {
     let server = start_server("ok");
-    let resp = client_get(format!("{}/", server.url), vec![], vec![], None, None)
+    let resp = client_get(format!("{}/", server.url), vec![], vec![], None, None, None)
         .expect("fast response should succeed with default timeout");
     assert_eq!(resp.status_code, 200);
 }
@@ -91,7 +124,7 @@ fn default_timeout_allows_fast_response() {
 #[test]
 fn explicit_timeout_is_enforced() {
     let server = start_server_with_delay("ok", Duration::from_millis(1500));
-    let result = client_get(format!("{}/", server.url), vec![], vec![], None, Some(0.2));
+    let result = client_get(format!("{}/", server.url), vec![], vec![], None, Some(0.2), None);
     assert!(
         matches!(result, Err(OoniError::TimeoutError(_))),
         "slow response should be a TimeoutError, got: {result:?}"
@@ -106,6 +139,7 @@ fn connection_refused_is_connection_error() {
         vec![],
         None,
         None,
+        None,
     );
     assert!(
         matches!(result, Err(OoniError::ConnectionError(_))),
@@ -116,7 +150,7 @@ fn connection_refused_is_connection_error() {
 #[test]
 fn generous_timeout_tolerates_slow_response() {
     let server = start_server_with_delay("ok", Duration::from_millis(300));
-    let resp = client_get(format!("{}/", server.url), vec![], vec![], None, Some(5.0))
+    let resp = client_get(format!("{}/", server.url), vec![], vec![], None, Some(5.0), None)
         .expect("response within timeout should succeed");
     assert_eq!(resp.status_code, 200);
 }
