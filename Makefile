@@ -35,6 +35,17 @@ MACOS_TARGETS := \
 STATICLIB_DIR := target/lib
 HEADER := $(STATICLIB_DIR)/include/ooniprobe_userauth.h
 
+LINUX_TRIPLE_x86_64  := x86_64-unknown-linux-gnu
+LINUX_TRIPLE_aarch64 := aarch64-unknown-linux-gnu
+LINUX_TRIPLE_arm     := arm-unknown-linux-gnueabihf
+LINUX_TRIPLE_x86     := i686-unknown-linux-gnu
+
+WINDOWS_TRIPLE_x86_64 := x86_64-pc-windows-gnu
+WINDOWS_TRIPLE_x86    := i686-pc-windows-gnu
+
+MACOS_TRIPLE_x86_64  := x86_64-apple-darwin
+MACOS_TRIPLE_aarch64 := aarch64-apple-darwin
+
 .PHONY: clean-android
 clean-android:
 	cargo clean -p $(CRATE)
@@ -144,8 +155,8 @@ linux/x86_64:
 
 .PHONY: linux/aarch64
 linux/aarch64:
-	rustup target add aarch64-unknown-linux-gnu 
-	cargo build -p $(CRATE) --target aarch64-unknown-linux-gnu --release	
+	rustup target add aarch64-unknown-linux-gnu
+	cargo build -p $(CRATE) --target aarch64-unknown-linux-gnu --release
 
 .PHONY: desktop-linux
 desktop-linux:
@@ -202,22 +213,23 @@ ffi-header:
 		--output $(HEADER) \
 		$(CRATE)/src/capi.rs
 
-.PHONY: staticlib-linux
-staticlib-linux:
-	@mkdir -p $(STATICLIB_DIR)/linux/amd64 $(STATICLIB_DIR)/linux/arm64
-	cp target/x86_64-unknown-linux-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/amd64/
-	cp target/aarch64-unknown-linux-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/arm64/
+staticlib-linux-%:
+	rustup target add $(LINUX_TRIPLE_$*)
+	cargo build -p $(CRATE) --target $(LINUX_TRIPLE_$*) --release
+	@mkdir -p $(STATICLIB_DIR)/linux/$*
+	cp target/$(LINUX_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/$*/
 	$(MAKE) ffi-header
 
-.PHONY: staticlib-macos
-staticlib-macos: macos-libs
-	@mkdir -p $(STATICLIB_DIR)/darwin/arm64 $(STATICLIB_DIR)/darwin/amd64
-	cp target/aarch64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/arm64/
-	cp target/x86_64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/darwin/amd64/
+staticlib-windows-%:
+	rustup target add $(WINDOWS_TRIPLE_$*)
+	cargo build -p $(CRATE) --target $(WINDOWS_TRIPLE_$*) --release
+	@mkdir -p $(STATICLIB_DIR)/windows/$*
+	cp target/$(WINDOWS_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/windows/$*/
 	$(MAKE) ffi-header
 
-.PHONY: staticlib-windows
-staticlib-windows: windows
-	@mkdir -p $(STATICLIB_DIR)/windows/amd64
-	cp target/x86_64-pc-windows-gnu/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/windows/amd64/
+staticlib-macos-%:
+	rustup target add $(MACOS_TRIPLE_$*)
+	cargo build -p $(CRATE) --target $(MACOS_TRIPLE_$*) --release
+	@mkdir -p $(STATICLIB_DIR)/macos/$*
+	cp target/$(MACOS_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/macos/$*/
 	$(MAKE) ffi-header

@@ -11,90 +11,145 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            rust-target: x86_64-unknown-linux-gnu
+            packages: ""
+            cc: gcc
+            cxx: g++
+          - arch: aarch64
+            rust-target: aarch64-unknown-linux-gnu
+            packages: gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            cc: aarch64-linux-gnu-gcc
+            cxx: aarch64-linux-gnu-g++
+          - arch: arm
+            rust-target: arm-unknown-linux-gnueabihf
+            packages: gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+            cc: arm-linux-gnueabihf-gcc
+            cxx: arm-linux-gnueabihf-g++
+          - arch: x86
+            rust-target: i686-unknown-linux-gnu
+            packages: gcc-multilib g++-multilib
+            cc: gcc
+            cxx: g++
+            cflags: -m32
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
 
       - run: rustup update stable
 
-      - name: Install cross-compilation toolchain
-        run: sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu cmake ninja-build
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ${{ matrix.packages }}
 
-      - name: Configure cross-compilation
+      - name: Configure linker
         run: |
           mkdir -p ~/.cargo
           cat >> ~/.cargo/config.toml << EOF
-          [target.aarch64-unknown-linux-gnu]
-          linker = "aarch64-linux-gnu-gcc"
+          [target.${{ matrix.rust-target }}]
+          linker = "${{ matrix.cc }}"
           EOF
 
-      - name: Build x86_64
-        run: |
-          make linux/x86_64
-
-      - name: Build aarch64
-        run: |
-          make linux/aarch64
+      - name: Build ${{ matrix.arch }} bundle
+        run: make staticlib-linux-${{ matrix.arch }}
         env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
-          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
-          CC: aarch64-linux-gnu-gcc
-          CXX: aarch64-linux-gnu-g+u+
-      
-      - name: Build linux bundle
-        run: make staticlib-linux
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+          CFLAGS: ${{ matrix.cflags }}
+          CXXFLAGS: ${{ matrix.cflags }}
 
-      - name: Upload linux artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lib-linux
+          name: lib-linux-${{ matrix.arch }}
           path: target/lib
 
   build-macos:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            rust-target: x86_64-apple-darwin
+          - arch: aarch64
+            rust-target: aarch64-apple-darwin
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
 
       - run: rustup update stable
 
-      - name: Build macOS bundle
-        run: make staticlib-macos
+      - name: Build ${{ matrix.arch }} bundle
+        run: make staticlib-macos-${{ matrix.arch }}
 
-      - name: Upload macOS artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lib-macos
+          name: lib-macos-${{ matrix.arch }}
           path: target/lib
 
   build-windows:
     runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            rust-target: x86_64-pc-windows-gnu
+            msystem: MINGW64
+            mingw-pkg: mingw-w64-x86_64-gcc
+          - arch: x86
+            rust-target: i686-pc-windows-gnu
+            msystem: MINGW32
+            mingw-pkg: mingw-w64-i686-gcc
+            long-double-flags: -mlong-double-64
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu
+          targets: ${{ matrix.rust-target }}
 
       - run: rustup update stable
 
-      - name: Install MinGW
-        run: choco install mingw --no-progress
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          path-type: inherit
+          install: >-
+            make
+            ${{ matrix.mingw-pkg }}
 
-      - name: Build windows bundle
-        shell: bash
-        run: make staticlib-windows
+      - name: Build ${{ matrix.arch }} bundle
+        shell: msys2 {0}
+        run: make staticlib-windows-${{ matrix.arch }}
+        env:
+          CFLAGS: ${{ matrix.long-double-flags }}
+          CXXFLAGS: ${{ matrix.long-double-flags }}
+          BINDGEN_EXTRA_CLANG_ARGS: ${{ matrix.long-double-flags }}
 
-      - name: Upload windows artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lib-windows
+          name: lib-windows-${{ matrix.arch }}
           path: target/lib
 
   bundle:
