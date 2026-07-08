@@ -43,6 +43,9 @@ LINUX_TRIPLE_x86     := i686-unknown-linux-gnu
 WINDOWS_TRIPLE_x86_64 := x86_64-pc-windows-gnu
 WINDOWS_TRIPLE_x86    := i686-pc-windows-gnu
 
+MACOS_TRIPLE_x86_64  := x86_64-apple-darwin
+MACOS_TRIPLE_aarch64 := aarch64-apple-darwin
+
 .PHONY: clean-android
 clean-android:
 	cargo clean -p $(CRATE)
@@ -224,9 +227,9 @@ staticlib-windows-%:
 	cp target/$(WINDOWS_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/windows/$*/
 	$(MAKE) ffi-header
 
-.PHONY: staticlib-macos
-staticlib-macos: macos-libs
-	@mkdir -p $(STATICLIB_DIR)/macos/aarch64 $(STATICLIB_DIR)/macos/x86_64
-	cp target/aarch64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/macos/aarch64/
-	cp target/x86_64-apple-darwin/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/macos/x86_64/
+staticlib-macos-%:
+	rustup target add $(MACOS_TRIPLE_$*)
+	cargo build -p $(CRATE) --target $(MACOS_TRIPLE_$*) --release
+	@mkdir -p $(STATICLIB_DIR)/macos/$*
+	cp target/$(MACOS_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/macos/$*/
 	$(MAKE) ffi-header
