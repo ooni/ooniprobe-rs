@@ -118,6 +118,7 @@ jobs:
             rust-target: i686-pc-windows-gnu
             msystem: MINGW32
             mingw-pkg: mingw-w64-i686-gcc
+            long-double-flags: -mlong-double-64
 
     steps:
       - uses: actions/checkout@v4
@@ -141,6 +142,10 @@ jobs:
       - name: Build ${{ matrix.arch }} bundle
         shell: msys2 {0}
         run: make staticlib-windows-${{ matrix.arch }}
+        env:
+          CFLAGS: ${{ matrix.long-double-flags }}
+          CXXFLAGS: ${{ matrix.long-double-flags }}
+          BINDGEN_EXTRA_CLANG_ARGS: ${{ matrix.long-double-flags }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
