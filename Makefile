@@ -40,6 +40,11 @@ LINUX_TRIPLE_aarch64 := aarch64-unknown-linux-gnu
 LINUX_TRIPLE_arm     := arm-unknown-linux-gnueabihf
 LINUX_TRIPLE_x86     := i686-unknown-linux-gnu
 
+LINUX_MUSL_TRIPLE_x86_64  := x86_64-unknown-linux-musl
+LINUX_MUSL_TRIPLE_aarch64 := aarch64-unknown-linux-musl
+LINUX_MUSL_TRIPLE_arm     := arm-unknown-linux-musleabihf
+LINUX_MUSL_TRIPLE_x86     := i686-unknown-linux-musl
+
 WINDOWS_TRIPLE_x86_64 := x86_64-pc-windows-gnu
 WINDOWS_TRIPLE_x86    := i686-pc-windows-gnu
 
@@ -218,6 +223,13 @@ staticlib-linux-%:
 	cargo build -p $(CRATE) --target $(LINUX_TRIPLE_$*) --release
 	@mkdir -p $(STATICLIB_DIR)/linux/$*
 	cp target/$(LINUX_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/$*/
+	$(MAKE) ffi-header
+
+staticlib-musl-%:
+	rustup target add $(LINUX_MUSL_TRIPLE_$*)
+	cargo build -p $(CRATE) --target $(LINUX_MUSL_TRIPLE_$*) --release
+	@mkdir -p $(STATICLIB_DIR)/linux-musl/$*
+	cp target/$(LINUX_MUSL_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux-musl/$*/
 	$(MAKE) ffi-header
 
 staticlib-windows-%:

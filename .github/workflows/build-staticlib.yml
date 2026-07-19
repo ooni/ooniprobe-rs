@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feat/musl
     tags:
       - "v*"
 
@@ -152,9 +153,73 @@ jobs:
           name: lib-windows-${{ matrix.arch }}
           path: target/lib
 
+  build-linux-musl:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            rust-target: x86_64-unknown-linux-musl
+            toolchain: x86_64-linux-musl-cross
+            cc: x86_64-linux-musl-gcc
+            cxx: x86_64-linux-musl-g++
+          - arch: aarch64
+            rust-target: aarch64-unknown-linux-musl
+            toolchain: aarch64-linux-musl-cross
+            cc: aarch64-linux-musl-gcc
+            cxx: aarch64-linux-musl-g++
+          - arch: arm
+            rust-target: arm-unknown-linux-musleabihf
+            toolchain: arm-linux-musleabihf-cross
+            cc: arm-linux-musleabihf-gcc
+            cxx: arm-linux-musleabihf-g++
+          - arch: x86
+            rust-target: i686-unknown-linux-musl
+            toolchain: i686-linux-musl-cross
+            cc: i686-linux-musl-gcc
+            cxx: i686-linux-musl-g++
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      - run: rustup update stable
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake ninja-build
+          curl -fsSL "https://musl.cc/${{ matrix.toolchain }}.tgz" | sudo tar -xz -C /opt
+          echo "/opt/${{ matrix.toolchain }}/bin" >> "$GITHUB_PATH"
+
+      - name: Configure linker
+        run: |
+          mkdir -p ~/.cargo
+          cat >> ~/.cargo/config.toml << EOF
+          [target.${{ matrix.rust-target }}]
+          linker = "${{ matrix.cc }}"
+          EOF
+
+      - name: Build ${{ matrix.arch }} bundle
+        run: make staticlib-musl-${{ matrix.arch }}
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lib-linux-musl-${{ matrix.arch }}
+          path: target/lib
+
   bundle:
     runs-on: ubuntu-latest
-    needs: [build-linux, build-macos, build-windows]
+    needs: [build-linux, build-linux-musl, build-macos, build-windows]
     permissions:
       contents: write
     steps:
