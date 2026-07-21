@@ -30,10 +30,10 @@ pin-project = "1"
 jni = "0.21.1"
 hyper-util = { version = "0.1.10", features = ["http1", "http2", "tokio"] }
 hyper = { version = "1.5.2", features = ["client"] }
-wreq = { version = "6.0.0-rc.28", features = ["webpki-roots", "query"] }
+wreq = { version = "6.0.0-rc.28", features = ["webpki-roots", "query", "socks"] }
 wreq-util = "3.0.0-rc.10"
 webpki-root-certs = "1.0.6"
-reqwest = { version = "0.13", features = ["query"] }
+reqwest = { version = "0.13", features = ["query", "socks"] }
 quanta = "0.12.4"
 base64 = "0.22.1"
 mime = "0.3.17"
