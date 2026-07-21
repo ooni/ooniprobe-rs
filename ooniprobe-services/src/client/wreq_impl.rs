@@ -1,7 +1,6 @@
 use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
 use mime::Mime;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::runtime::Runtime;
 use wreq::tls::CertStore;
@@ -13,12 +12,8 @@ const POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 const POOL_MAX_IDLE_PER_HOST: usize = 4;
 
 pub struct Client {
-    inner: Arc<ClientRef>,
-    rt: Runtime,
-}
-
-struct ClientRef {
     http_client: wreq::Client,
+    rt: Runtime,
 }
 
 fn decode_to_text(bytes: &Bytes, headers: &wreq::header::HeaderMap) -> Result<String, Error> {
@@ -46,7 +41,7 @@ impl Client {
 
     pub fn execute(&self, request: wreq::Request) -> Result<Response, Error> {
         self.rt.block_on(async {
-            let wreq_resp: wreq::Response = self.inner.http_client.execute(request).await?;
+            let wreq_resp: wreq::Response = self.http_client.execute(request).await?;
 
             let status_code = wreq_resp.status().as_u16();
             let version = match wreq_resp.version() {
@@ -101,7 +96,7 @@ impl Client {
             "OPTIONS" => http::Method::OPTIONS,
             _ => return Err(Error::InvalidHttpMethod),
         };
-        Ok(self.inner.http_client.request(m, url))
+        Ok(self.http_client.request(m, url))
     }
 }
 
@@ -159,7 +154,7 @@ impl ClientBuilder {
             .expect("failed to build tokio runtime");
 
         Ok(Client {
-            inner: Arc::new(ClientRef { http_client }),
+            http_client,
             rt,
         })
     }
