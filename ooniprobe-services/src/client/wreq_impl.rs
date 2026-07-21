@@ -9,6 +9,9 @@ use wreq_util::Emulation;
 
 use super::{b64_encode, ClientOptions, Error, Response};
 
+const POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+const POOL_MAX_IDLE_PER_HOST: usize = 4;
+
 pub struct Client {
     inner: Arc<ClientRef>,
     rt: Runtime,
@@ -128,7 +131,9 @@ impl ClientBuilder {
             .cert_store(CertStore::from_der_certs(
                 webpki_root_certs::TLS_SERVER_ROOT_CERTS,
             )?)
-            .emulation(Emulation::Chrome118);
+            .emulation(Emulation::Chrome118)
+            .pool_idle_timeout(POOL_IDLE_TIMEOUT)
+            .pool_max_idle_per_host(POOL_MAX_IDLE_PER_HOST);
 
         if let Some(timeout) = self.client_options.timeout {
             client_builder = client_builder.timeout(Duration::from_secs_f32(timeout));
