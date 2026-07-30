@@ -294,4 +294,46 @@ mod tests {
             body_text
         );
     }
+
+    #[test]
+    fn cache_same_key_returns_cached_client() {
+        let a = build_client(None, None, Some("cache-same/1")).unwrap();
+        let b = build_client(None, None, Some("cache-same/1")).unwrap();
+        assert!(Arc::ptr_eq(&a, &b), "same key must return the cached client");
+    }
+
+    #[test]
+    fn cache_distinct_user_agent_distinct_client() {
+        let a = build_client(None, None, Some("cache-ua-a/1")).unwrap();
+        let b = build_client(None, None, Some("cache-ua-b/1")).unwrap();
+        assert!(!Arc::ptr_eq(&a, &b), "different user agents must not share a client");
+    }
+
+    #[test]
+    fn cache_distinct_timeout_distinct_client() {
+        let a = build_client(None, Some(5.0), Some("cache-timeout/1")).unwrap();
+        let b = build_client(None, Some(9.0), Some("cache-timeout/1")).unwrap();
+        assert!(!Arc::ptr_eq(&a, &b), "different timeouts must not share a client");
+    }
+
+    #[test]
+    fn cache_distinct_proxy_distinct_client() {
+        let a = build_client(Some("http://127.0.0.1:8080"), None, Some("cache-proxy/1")).unwrap();
+        let b = build_client(Some("http://127.0.0.1:9090"), None, Some("cache-proxy/1")).unwrap();
+        assert!(!Arc::ptr_eq(&a, &b), "different proxies must not share a client");
+    }
+
+    #[test]
+    fn cache_none_timeout_normalizes_to_default() {
+        let a = build_client(None, None, Some("cache-norm-timeout/1")).unwrap();
+        let b = build_client(None, Some(DEFAULT_TIMEOUT_SECS), Some("cache-norm-timeout/1")).unwrap();
+        assert!(Arc::ptr_eq(&a, &b), "None timeout must map to the same key as the default");
+    }
+
+    #[test]
+    fn cache_none_user_agent_normalizes_to_default() {
+        let a = build_client(None, None, None).unwrap();
+        let b = build_client(None, None, Some(DEFAULT_USER_AGENT)).unwrap();
+        assert!(Arc::ptr_eq(&a, &b), "None user agent must map to the same key as the default");
+    }
 }
