@@ -4,7 +4,7 @@ mod common;
 
 use std::time::Duration;
 
-use common::{start_server, start_server_with_delay};
+use common::{start_keepalive_server, start_server, start_server_with_delay};
 use uniffi_ooniprobe::{client_get, client_post, KeyValue, OoniError};
 
 fn kv(key: &str, value: &str) -> KeyValue {
@@ -153,4 +153,54 @@ fn generous_timeout_tolerates_slow_response() {
     let resp = client_get(format!("{}/", server.url), vec![], vec![], None, Some(5.0), None)
         .expect("response within timeout should succeed");
     assert_eq!(resp.status_code, 200);
+}
+
+#[test]
+fn reuses_connection_across_calls() {
+    let server = start_keepalive_server("ok");
+    let ua = Some("reuse-across-calls/1".to_string());
+
+    for _ in 0..3 {
+        client_get(
+            format!("{}/", server.url),
+            vec![],
+            vec![],
+            None,
+            None,
+            ua.clone(),
+        )
+        .expect("GET should succeed");
+    }
+
+    assert_eq!(server.hits(), 3, "expected three requests");
+    assert_eq!(
+        server.accepts(),
+        1,
+        "all three requests should reuse one connection, got {} accepts",
+        server.accepts()
+    );
+}
+
+#[test]
+fn distinct_user_agent_uses_distinct_client() {
+    let server = start_keepalive_server("ok");
+
+    for ua in ["distinct-a/1", "distinct-b/1"] {
+        client_get(
+            format!("{}/", server.url),
+            vec![],
+            vec![],
+            None,
+            None,
+            Some(ua.to_string()),
+        )
+        .expect("GET should succeed");
+    }
+
+    assert_eq!(server.hits(), 2, "expected two requests");
+    assert_eq!(
+        server.accepts(),
+        2,
+        "differing user agents must use separate clients (separate pools)"
+    );
 }
