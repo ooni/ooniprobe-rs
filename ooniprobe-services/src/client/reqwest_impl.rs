@@ -6,6 +6,9 @@ use tokio::runtime::Runtime;
 
 use super::{b64_encode, ClientOptions, Error, Response};
 
+const POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+const POOL_MAX_IDLE_PER_HOST: usize = 4;
+
 pub struct Client {
     http_client: reqwest::Client,
     rt: Runtime,
@@ -117,7 +120,10 @@ impl ClientBuilder {
     }
 
     pub fn build(self) -> Result<Client, Error> {
-        let mut client_builder = reqwest::Client::builder().use_rustls_tls();
+        let mut client_builder = reqwest::Client::builder()
+            .use_rustls_tls()
+            .pool_idle_timeout(POOL_IDLE_TIMEOUT)
+            .pool_max_idle_per_host(POOL_MAX_IDLE_PER_HOST);
 
         if let Some(timeout) = self.client_options.timeout {
             client_builder = client_builder.timeout(Duration::from_secs_f32(timeout));
