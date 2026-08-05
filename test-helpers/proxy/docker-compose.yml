@@ -1,0 +1,6 @@
+services:
+  nginx-proxy:
+    image: nginx:alpine
+    network_mode: host
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro

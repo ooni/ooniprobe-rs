@@ -3,7 +3,8 @@ members = [
     "ooniprobe-services",
     "ooniprobe-ffi",
     "uniffi-bindgen",
-    "cbindgen-gen"
+    "cbindgen-gen",
+    "test-helpers"
 ]
 resolver = "2"
 
@@ -15,7 +16,7 @@ edition = "2021"
 ooniprobe-experiments = { version = "0.1.0", path = "./ooniprobe-experiments" }
 ooniprobe-services = { version = "0.1.0", path = "./ooniprobe-services" }
 ooniauth-core = { git = "https://github.com/ooni/userauth" }
-rand = "0.8.5" 
+rand = "0.8.5"
 bincode = "1"
 thiserror = "2.0.12"
 serde = { version = "1.0.216", features = ["serde_derive"] }
