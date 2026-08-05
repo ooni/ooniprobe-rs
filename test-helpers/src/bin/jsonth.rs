@@ -210,7 +210,7 @@ fn log_response(resp: &JsonResponse) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use http_body_util::BodyExt;
+    use http_body_util::{BodyExt, Empty};
 
     #[tokio::test]
     async fn parse_line_extracts_request_line() {
@@ -301,5 +301,83 @@ mod tests {
         let body = resp.into_body().collect().await.unwrap().to_bytes();
         let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(parsed["message"], "boom");
+    }
+
+    #[tokio::test]
+    async fn test_jsonth_basic() {
+        let mut sender = spawn_json_server(true).await;
+
+        let request = Request::builder()
+            .uri("/some/path")
+            .header("Host", "example.com")
+            .header("Accept", "application/json")
+            .body(Empty::<Bytes>::new())
+            .unwrap();
+
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(parsed["request_line"], "GET /some/path HTTP/1.1");
+        assert_eq!(parsed["headers_dict"]["Host"][0], "example.com");
+        assert_eq!(parsed["headers_dict"]["Accept"][0], "application/json");
+    }
+
+    #[tokio::test]
+    /// Test that we can detect when a header is changed in its way to the
+    /// server
+    async fn test_jsonth_header_cases() {
+        let mut sender = spawn_json_server(false).await;
+
+        let request = Request::builder()
+            .uri("/some/path")
+            .header("Host", "example.com")
+            .header("Accept", "application/json")
+            .body(Empty::<Bytes>::new())
+            .unwrap();
+
+        let response = sender.send_request(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(parsed["request_line"], "GET /some/path HTTP/1.1");
+        assert_eq!(parsed["headers_dict"]["host"][0], "example.com");
+        assert_eq!(parsed["headers_dict"]["accept"][0], "application/json");
+    }
+
+    /// Starts the json helper on an ephemeral port and returns a client
+    /// sender already connected to it.
+    ///
+    /// Note that it uses the title_case_headers from hyper to check if the
+    /// server is not rewriting the casing of headers. This is the kind of thing
+    /// we want to detect
+    async fn spawn_json_server(title_case_headers : bool) -> hyper::client::conn::http1::SendRequest<Empty<Bytes>> {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            handle_json_helper(stream).await;
+        });
+
+        let stream = TcpStream::connect(addr).await.unwrap();
+        let io = TokioIo::new(stream);
+
+        let (sender, conn) = hyper::client::conn::http1::Builder::new()
+            .title_case_headers(title_case_headers)
+            .handshake(io)
+            .await
+            .unwrap();
+        tokio::spawn(async move {
+            if let Err(e) = conn.await {
+                error!("Connection failed: {e}");
+            }
+        });
+
+        sender
     }
 }
