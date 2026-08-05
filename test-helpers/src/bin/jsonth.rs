@@ -206,3 +206,100 @@ fn log_response(resp: &JsonResponse) {
         resp.request_line, user_agent, host
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http_body_util::BodyExt;
+
+    #[tokio::test]
+    async fn parse_line_extracts_request_line() {
+        let buf = b"GET /path HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        let line = parse_line(buf).await.unwrap();
+        assert_eq!(line, "GET /path HTTP/1.1");
+    }
+
+    #[tokio::test]
+    async fn parse_line_without_crlf_returns_whole_buffer() {
+        let buf = b"GET /path HTTP/1.1";
+        let line = parse_line(buf).await.unwrap();
+        assert_eq!(line, "GET /path HTTP/1.1");
+    }
+
+    #[tokio::test]
+    async fn parse_line_rejects_non_utf8() {
+        let buf = [0xff, 0xfe, 0xfd];
+        let result = parse_line(&buf).await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_headers_list_collects_single_values() {
+        let buf = b"Host: example.com\r\nAccept: text/plain\r\n\r\n";
+        let headers = parse_headers_list(buf).unwrap();
+        assert_eq!(headers.get("Host"), Some(&vec!["example.com".to_string()]));
+        assert_eq!(
+            headers.get("Accept"),
+            Some(&vec!["text/plain".to_string()])
+        );
+    }
+
+    #[test]
+    fn parse_headers_list_collects_repeated_header_names() {
+        let buf = b"Accept: application/json\r\nAccept: text/plain\r\n\r\n";
+        let headers = parse_headers_list(buf).unwrap();
+        assert_eq!(
+            headers.get("Accept"),
+            Some(&vec![
+                "application/json".to_string(),
+                "text/plain".to_string()
+            ])
+        );
+    }
+
+    #[test]
+    fn parse_headers_list_with_no_headers_returns_empty_map() {
+        let buf = b"\r\n";
+        let headers = parse_headers_list(buf).unwrap();
+        assert!(headers.is_empty());
+    }
+
+    #[test]
+    fn parse_headers_list_partial_buffer_is_error() {
+        // No terminating blank line, so httparse can't tell if headers are complete.
+        let buf = b"Host: example.com\r\n";
+        let result = parse_headers_list(buf);
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn make_response_serializes_json_body() {
+        let response = JsonResponse {
+            request_line: "GET / HTTP/1.1".to_string(),
+            headers_dict: HashMap::from([("Host".to_string(), vec!["example.com".to_string()])]),
+        };
+
+        let resp = make_response(&response).unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers().get(header::CONTENT_TYPE).unwrap(),
+            "application/json"
+        );
+
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(parsed["request_line"], "GET / HTTP/1.1");
+        assert_eq!(parsed["headers_dict"]["Host"][0], "example.com");
+    }
+
+    #[tokio::test]
+    async fn make_error_response_serializes_message() {
+        let resp =
+            make_error_response("boom".to_string(), StatusCode::INTERNAL_SERVER_ERROR).unwrap();
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        let parsed: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(parsed["message"], "boom");
+    }
+}
