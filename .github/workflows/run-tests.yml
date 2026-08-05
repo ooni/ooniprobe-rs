@@ -33,3 +33,15 @@ jobs:
 
       - name: Run tests
         run: cargo test -p ooniprobe-services --all-targets --locked --verbose
+
+  test-helpers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run tests
+        run: cargo test -p test-helpers --all-targets --locked --verbose
