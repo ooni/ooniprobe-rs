@@ -1,0 +1,92 @@
+name: Create release 
+on:
+  push: 
+    branches: 
+      - 'main'
+      - 'new-build-ci' # TODO delete before merge
+env:
+  GH_TOKEN: ${{ github.token }}
+permissions:
+  contents: write    # allows creating releases, uploading assets
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Checkout repository 
+        uses: actions/checkout@v5.0.0
+        
+      - name: Install rustup toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with: 
+          toolchain: "stable-x86_64-unknown-linux-gnu"
+        
+      - name: Cache Cargo registry + build
+        uses: Swatinem/rust-cache@v2.8.0
+        
+      - name: Extract crate version
+        id: version
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get short commit hash
+        id: commit
+        run: |
+          HASH="${GITHUB_SHA::4}"
+          echo "hash=${HASH}" >> $GITHUB_OUTPUT
+        
+      - name: Build release binary
+        run: |
+          CRATES=("ooniprobe-services" "ooniprobe" "ooniprobe-core" )
+          for crate in "${CRATES[@]}"; do
+              cargo build --release -p $crate --target-dir ./build/$crate 
+          done
+      
+      - name: Prepare artifacts
+        id: prepare
+        run: |
+          mkdir -p dist
+          VERSION="${{ steps.version.outputs.version }}"
+          HASH="${{ steps.commit.outputs.hash }}"
+          PARENT_DIR='./build'
+          for dir in "$PARENT_DIR"/*/; do
+              dir_name=$(basename "$dir")
+              dist_name="${dir_name}@${VERSION}-${HASH}"
+              mkdir -p "./dist/$dist_name"
+              
+              # find exec files
+              exe_files=()
+              src_dir="$PARENT_DIR/$dir_name/release"
+              for f in "$src_dir"/*; do [[ -x $f && -f $f ]] && exe_files+=( "$f" ); done
+
+              # Copy exe files
+              if (( ${#exe_files[@]} > 0 )); then
+                  cp -r "${exe_files[@]}" "./dist/$dist_name/"
+              fi
+              
+              # Copy .so files
+              if find "$src_dir" -maxdepth 1 -type f -name "*.so" | grep -q .; then
+                  cp -r $src_dir/*.so "./dist/$dist_name"
+              fi
+
+              # Generate .tar.gz files            
+              if [ -n "$(ls -A ./dist/$dist_name/ 2>/dev/null)" ]; then
+                  echo "files to tar: "
+                  ls -A ./dist/$dist_name/
+                  tar -czf ./dist/$dist_name.tar.gz -C ./dist/$dist_name/ $(echo ./dist/$dist_name/* | xargs -n1 basename)
+              fi
+          done
+          # Export dist path as step output
+          echo "dist_dir=$(pwd)/dist" >> $GITHUB_OUTPUT
+          echo "version_tag=${VERSION}-${HASH}" >> $GITHUB_OUTPUT
+          
+      - name: Create release
+        run: | 
+          VERSION_TAG="${{steps.prepare.outputs.version_tag}}"
+          DIST_DIR="${{steps.prepare.outputs.dist_dir}}"
+          gh release create $VERSION_TAG $DIST_DIR/*.tar.gz -t "Release $VERSION_TAG" -n "Release binaries for ooniprobe-rs"
+          
+      - name: Print artifact info
+        run: | 
+          echo "Artifact successfully built ✅"
+          echo "   Version: ooniprobe-rs@${{ steps.version.outputs.version }}-${{ steps.commit.outputs.hash }}"
