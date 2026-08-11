@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feat/connection-pool
     tags:
       - "v*"
 
