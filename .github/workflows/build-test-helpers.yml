@@ -22,27 +22,27 @@ jobs:
       - run: rustup update stable
 
       - name: Build echo test helper
-        run: cargo build --release --bin echoth
+        run: cargo build --release --bin ooechohelpd
 
       - name: Build json test helper
-        run: cargo build --release --bin jsonth
+        run: cargo build --release --bin oojsonhelpd
 
       - name: Upload binaries
         uses: actions/upload-artifact@v6
         with:
-          name: echoth
-          path: test-helpers/echoth
+          name: ooechohelpd
+          path: test-helpers/ooechohelpd
 
       - name: Upload binaries
         uses: actions/upload-artifact@v6
         with:
           name: test-helpers
           path: |
-            target/release/echoth
-            target/release/jsonth
+            target/release/ooechohelpd
+            target/release/oojsonhelpd
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${GITHUB_REF_NAME}" target/release/echoth target/release/jsonth --clobber
+        run: gh release upload "${GITHUB_REF_NAME}" target/release/ooechohelpd target/release/oojsonhelpd --clobber
