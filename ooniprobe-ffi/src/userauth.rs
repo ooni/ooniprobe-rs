@@ -141,7 +141,7 @@ pub fn userauth_register(
     let json_payload = serde_json::to_string(&payload)?;
 
     // make the API call
-    let client = build_client(&url, proxy.as_deref(), timeout, user_agent.as_deref())?;
+    let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))
@@ -254,7 +254,7 @@ pub fn userauth_submit(
     let json_payload = serde_json::to_string(&submit_payload)?;
 
     // make the API call
-    let client = build_client(&url, proxy.as_deref(), timeout, user_agent.as_deref())?;
+    let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
     let request = client
         .request("POST", &url)
         .map(|b| b.body(json_payload))

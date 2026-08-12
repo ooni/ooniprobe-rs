@@ -1,5 +1,8 @@
 use crate::errors::OoniError;
 
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
+
 use ooniprobe_services::client::{Client, ClientOptions, Response};
 use serde::{Deserialize, Serialize};
 
@@ -51,23 +54,47 @@ impl From<Response> for HttpResponse {
 const DEFAULT_TIMEOUT_SECS: f32 = 30.0;
 const DEFAULT_USER_AGENT: &str = "ooniprobe";
 
+// The connection pool lives inside the client, so clients are cached and reused.
+// Keyed by the options baked in at build time;
+type ClientKey = (Option<String>, String, u32);
+
+fn client_cache() -> &'static Mutex<HashMap<ClientKey, Arc<Client>>> {
+    static CACHE: OnceLock<Mutex<HashMap<ClientKey, Arc<Client>>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
 pub fn build_client(
-    url: &str,
     proxy: Option<&str>,
     timeout: Option<f32>,
     user_agent: Option<&str>,
-) -> Result<Client, OoniError> {
+) -> Result<Arc<Client>, OoniError> {
+    let timeout = timeout.unwrap_or(DEFAULT_TIMEOUT_SECS);
+    let user_agent = user_agent.unwrap_or(DEFAULT_USER_AGENT);
+    let key = (
+        proxy.map(String::from),
+        user_agent.to_string(),
+        timeout.to_bits(),
+    );
+
+    let mut cache = client_cache().lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(client) = cache.get(&key) {
+        return Ok(Arc::clone(client));
+    }
+
     let mut options = ClientOptions::new();
-
     options.set_proxy_url(proxy);
-    options.set_base_url(Some(url));
-    options.set_timeout(Some(timeout.unwrap_or(DEFAULT_TIMEOUT_SECS)));
-    options.set_user_agent(Some(user_agent.unwrap_or(DEFAULT_USER_AGENT)));
+    options.set_timeout(Some(timeout));
+    options.set_user_agent(Some(user_agent));
 
-    Client::builder()
-        .set_options(options)
-        .build()
-        .map_err(OoniError::from)
+    let client = Arc::new(
+        Client::builder()
+            .set_options(options)
+            .build()
+            .map_err(OoniError::from)?,
+    );
+    cache.insert(key, Arc::clone(&client));
+
+    Ok(client)
 }
 
 pub fn client_get(
@@ -78,7 +105,7 @@ pub fn client_get(
     timeout: Option<f32>,
     user_agent: Option<String>,
 ) -> Result<HttpResponse, OoniError> {
-    let client = build_client(&url, proxy.as_deref(), timeout, user_agent.as_deref())?;
+    let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
 
     let mut header_map = HeaderMap::new();
     for kv in headers {
@@ -111,7 +138,7 @@ pub fn client_post(
     timeout: Option<f32>,
     user_agent: Option<String>,
 ) -> Result<HttpResponse, OoniError> {
-    let client = build_client(&url, proxy.as_deref(), timeout, user_agent.as_deref())?;
+    let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
 
     let mut header_map = HeaderMap::new();
     for kv in headers {
@@ -143,8 +170,8 @@ mod tests {
     #[test]
     fn get_manifest_returns_manifest_version_and_public_params() {
         let url = format!("{BASE_URL}/api/v1/manifest");
-        let resp = client_get(url, vec![], vec![], None, None, None)
-            .expect("GET manifest should succeed");
+        let resp =
+            client_get(url, vec![], vec![], None, None, None).expect("GET manifest should succeed");
 
         assert_eq!(resp.status_code, 200, "incorrect status_code: {:?}", resp);
 
@@ -266,5 +293,47 @@ mod tests {
             "backend_version missing: {}",
             body_text
         );
+    }
+
+    #[test]
+    fn cache_same_key_returns_cached_client() {
+        let a = build_client(None, None, Some("cache-same/1")).unwrap();
+        let b = build_client(None, None, Some("cache-same/1")).unwrap();
+        assert!(Arc::ptr_eq(&a, &b), "same key must return the cached client");
+    }
+
+    #[test]
+    fn cache_distinct_user_agent_distinct_client() {
+        let a = build_client(None, None, Some("cache-ua-a/1")).unwrap();
+        let b = build_client(None, None, Some("cache-ua-b/1")).unwrap();
+        assert!(!Arc::ptr_eq(&a, &b), "different user agents must not share a client");
+    }
+
+    #[test]
+    fn cache_distinct_timeout_distinct_client() {
+        let a = build_client(None, Some(5.0), Some("cache-timeout/1")).unwrap();
+        let b = build_client(None, Some(9.0), Some("cache-timeout/1")).unwrap();
+        assert!(!Arc::ptr_eq(&a, &b), "different timeouts must not share a client");
+    }
+
+    #[test]
+    fn cache_distinct_proxy_distinct_client() {
+        let a = build_client(Some("http://127.0.0.1:8080"), None, Some("cache-proxy/1")).unwrap();
+        let b = build_client(Some("http://127.0.0.1:9090"), None, Some("cache-proxy/1")).unwrap();
+        assert!(!Arc::ptr_eq(&a, &b), "different proxies must not share a client");
+    }
+
+    #[test]
+    fn cache_none_timeout_normalizes_to_default() {
+        let a = build_client(None, None, Some("cache-norm-timeout/1")).unwrap();
+        let b = build_client(None, Some(DEFAULT_TIMEOUT_SECS), Some("cache-norm-timeout/1")).unwrap();
+        assert!(Arc::ptr_eq(&a, &b), "None timeout must map to the same key as the default");
+    }
+
+    #[test]
+    fn cache_none_user_agent_normalizes_to_default() {
+        let a = build_client(None, None, None).unwrap();
+        let b = build_client(None, None, Some(DEFAULT_USER_AGENT)).unwrap();
+        assert!(Arc::ptr_eq(&a, &b), "None user agent must map to the same key as the default");
     }
 }
