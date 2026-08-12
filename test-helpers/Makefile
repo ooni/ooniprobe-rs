@@ -1,11 +1,11 @@
 all:
 	cargo build --release
 
-echo:
-	cargo build --release --bin echo
+echoth:
+	cargo build --release --bin echoth
 
-run_echo:
-	cargo run --bin echo -- --port 1234
+run_echoth:
+	cargo run --bin echoth -- --port 1234
 
 jsonth:
 	cargo build --release --bin jsonth
