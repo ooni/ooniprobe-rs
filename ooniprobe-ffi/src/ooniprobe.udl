@@ -47,6 +47,9 @@ namespace ooniprobe {
         string probe_asn,
         string probe_cc
     );
+
+    [Throws=OoniError]
+    string protocol_version();
 };
 
 [Error]

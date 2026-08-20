@@ -115,6 +115,10 @@ pub fn get_probe_id(
     })
 }
 
+pub fn protocol_version() -> String {
+    VERSION.to_string()
+}
+
 pub fn userauth_register(
     url: String,
     public_params: String,
@@ -313,10 +317,18 @@ pub fn userauth_submit(
 
 #[cfg(test)]
 mod tests {
+    use super::{protocol_version, VERSION};
     use crate::get_probe_id;
     use crate::userauth::{userauth_register, userauth_submit, CredentialConfig, ParamRange};
 
     const BASE_URL: &str = "https://api.dev.ooni.io";
+
+    #[test]
+    fn protocol_version_matches_ooniauth_core() {
+        let version = protocol_version();
+        assert!(!version.is_empty(), "protocol version must not be empty");
+        assert_eq!(version, VERSION.to_string());
+    }
 
     #[test]
     fn userauth_register_works_with_public_params() {
