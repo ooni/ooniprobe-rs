@@ -4,8 +4,9 @@ use std::ptr;
 use serde_json::json;
 
 use crate::userauth::{
-    get_probe_id as get_probe_id_impl, userauth_register as userauth_register_impl,
-    userauth_submit as userauth_submit_impl, CredentialConfig,
+    get_probe_id as get_probe_id_impl, protocol_version as protocol_version_impl,
+    userauth_register as userauth_register_impl, userauth_submit as userauth_submit_impl,
+    CredentialConfig,
 };
 
 /// Flat C-ABI result carrying either a JSON payload or an error string.
@@ -171,6 +172,13 @@ pub unsafe extern "C" fn get_probe_id(
         }
         Err(e) => ClientResponse::err(e.to_string()),
     }
+}
+
+/// The ooniauth protocol version this client was built against.
+#[no_mangle]
+pub unsafe extern "C" fn protocol_version() -> ClientResponse {
+    let payload = json!({ "protocol_version": protocol_version_impl() });
+    ClientResponse::ok(payload.to_string())
 }
 
 /// Free the memory owned by a [`ClientResponse`].
@@ -452,5 +460,22 @@ mod tests {
             error: ptr::null_mut(),
         };
         unsafe { client_response_free(response) };
+    }
+
+    #[test]
+    fn protocol_version_returns_json_payload() {
+        let response = unsafe { protocol_version() };
+        let json = unsafe { read_field(response.json) };
+        let error = unsafe { read_field(response.error) };
+        unsafe { client_response_free(response) };
+
+        assert!(error.is_none(), "unexpected error: {error:?}");
+        let json = json.expect("json payload");
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let version = parsed
+            .get("protocol_version")
+            .and_then(|v| v.as_str())
+            .expect("protocol_version field");
+        assert!(!version.is_empty(), "protocol version must not be empty");
     }
 }
