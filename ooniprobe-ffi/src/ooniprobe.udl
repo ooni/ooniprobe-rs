@@ -48,7 +48,6 @@ namespace ooniprobe {
         string probe_cc
     );
 
-    [Throws=OoniError]
     string protocol_version();
 };
 
