@@ -5,7 +5,9 @@ mod common;
 use std::time::Duration;
 
 use common::{start_server, start_server_with_delay};
-use uniffi_ooniprobe::{get_probe_id, userauth_register, userauth_submit, OoniError};
+use uniffi_ooniprobe::{
+    get_probe_id, protocol_version, userauth_register, userauth_submit, OoniError,
+};
 
 const PUBLIC_PARAMS: &str = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=";
 const MANIFEST_VERSION: &str = "TjxIhQyJHRZsqmidU_coSEl2dZUiBGvL";
@@ -97,6 +99,11 @@ fn submit_enforces_timeout() {
         matches!(result, Err(OoniError::TimeoutError(_))),
         "slow submit should be a TimeoutError, got: {result:?}"
     );
+}
+
+#[test]
+fn protocol_version_is_non_empty() {
+    assert!(!protocol_version().is_empty());
 }
 
 #[test]
