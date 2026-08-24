@@ -12,10 +12,25 @@ use ooniauth_core::{
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 
-use crate::client::build_client;
+use crate::client::{build_client, build_header_map, KeyValue};
 use crate::errors::OoniError;
 use crate::HttpResponse;
 use ooniauth_core::{PublicParameters, VERSION};
+
+const PROTOCOL_VERSION_HEADER: &str = "X-Protocol-Version";
+
+// Force `X-Protocol-Version` to the client's protocol version
+fn with_protocol_version(headers: Vec<KeyValue>) -> Vec<KeyValue> {
+    let mut headers: Vec<KeyValue> = headers
+        .into_iter()
+        .filter(|kv| !kv.key.eq_ignore_ascii_case(PROTOCOL_VERSION_HEADER))
+        .collect();
+    headers.push(KeyValue {
+        key: PROTOCOL_VERSION_HEADER.to_string(),
+        value: VERSION.to_string(),
+    });
+    headers
+}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ParamRange {
@@ -123,6 +138,7 @@ pub fn userauth_register(
     url: String,
     public_params: String,
     manifest_version: String,
+    headers: Option<Vec<KeyValue>>,
     proxy: Option<String>,
     timeout: Option<f32>,
     user_agent: Option<String>,
@@ -146,9 +162,10 @@ pub fn userauth_register(
 
     // make the API call
     let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
+    let header_map = build_header_map(with_protocol_version(headers.unwrap_or_default()))?;
     let request = client
         .request("POST", &url)
-        .map(|b| b.body(json_payload))
+        .map(|b| b.headers(header_map).body(json_payload))
         .and_then(|b| b.build().map_err(Into::into))?;
 
     let response: HttpResponse = client.execute(request).map(Into::into)?;
@@ -195,6 +212,7 @@ pub fn userauth_submit(
     content: String,
     probe_cc: String,
     probe_asn: String,
+    headers: Option<Vec<KeyValue>>,
     proxy: Option<String>,
     timeout: Option<f32>,
     user_agent: Option<String>,
@@ -259,9 +277,10 @@ pub fn userauth_submit(
 
     // make the API call
     let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
+    let header_map = build_header_map(with_protocol_version(headers.unwrap_or_default()))?;
     let request = client
         .request("POST", &url)
-        .map(|b| b.body(json_payload))
+        .map(|b| b.headers(header_map).body(json_payload))
         .and_then(|b| b.build().map_err(Into::into))?;
 
     let response: HttpResponse = client.execute(request).map(Into::into)?;
@@ -317,11 +336,57 @@ pub fn userauth_submit(
 
 #[cfg(test)]
 mod tests {
-    use super::{protocol_version, VERSION};
+    use super::{
+        protocol_version, with_protocol_version, KeyValue, PROTOCOL_VERSION_HEADER, VERSION,
+    };
     use crate::get_probe_id;
     use crate::userauth::{userauth_register, userauth_submit, CredentialConfig, ParamRange};
 
     const BASE_URL: &str = "https://api.dev.ooni.io";
+
+    fn kv(key: &str, value: &str) -> KeyValue {
+        KeyValue {
+            key: key.to_string(),
+            value: value.to_string(),
+        }
+    }
+
+    // Values of every header whose name matches X-Protocol-Version (case-insensitive).
+    fn protocol_values(headers: &[KeyValue]) -> Vec<String> {
+        headers
+            .iter()
+            .filter(|h| h.key.eq_ignore_ascii_case(PROTOCOL_VERSION_HEADER))
+            .map(|h| h.value.clone())
+            .collect()
+    }
+
+    #[test]
+    fn protocol_version_added_when_absent() {
+        let out = with_protocol_version(vec![kv("X-Other", "keep")]);
+        assert!(
+            out.iter().any(|h| h.key == "X-Other" && h.value == "keep"),
+            "unrelated headers must be preserved"
+        );
+        assert_eq!(protocol_values(&out), vec![VERSION.to_string()]);
+    }
+
+    #[test]
+    fn protocol_version_overwrites_caller() {
+        let out = with_protocol_version(vec![kv(PROTOCOL_VERSION_HEADER, "bogus")]);
+        assert_eq!(
+            protocol_values(&out),
+            vec![VERSION.to_string()],
+            "caller value must be replaced, with exactly one entry"
+        );
+        assert!(!out.iter().any(|h| h.value == "bogus"));
+    }
+
+    #[test]
+    fn protocol_version_overwrites_case_insensitive() {
+        let out = with_protocol_version(vec![kv("x-protocol-version", "bogus")]);
+        assert_eq!(protocol_values(&out), vec![VERSION.to_string()]);
+        assert!(!out.iter().any(|h| h.value == "bogus"));
+    }
 
     #[test]
     fn protocol_version_matches_ooniauth_core() {
@@ -341,6 +406,7 @@ mod tests {
             url,
             public_params.to_string(),
             manifest_version.to_string(),
+            None,
             None,
             None,
             None,
@@ -372,6 +438,7 @@ mod tests {
             format!("{BASE_URL}/api/v1/sign_credential"),
             public_params.clone(),
             manifest_version.clone(),
+            None,
             None,
             None,
             None,
@@ -419,6 +486,7 @@ mod tests {
             measurement_content,
             probe_cc.clone(),
             probe_asn.clone(),
+            None,
             None,
             None,
             None,

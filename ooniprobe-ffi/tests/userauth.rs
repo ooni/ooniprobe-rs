@@ -6,8 +6,15 @@ use std::time::Duration;
 
 use common::{start_server, start_server_with_delay};
 use uniffi_ooniprobe::{
-    get_probe_id, protocol_version, userauth_register, userauth_submit, OoniError,
+    get_probe_id, protocol_version, userauth_register, userauth_submit, KeyValue, OoniError,
 };
+
+fn kv(key: &str, value: &str) -> KeyValue {
+    KeyValue {
+        key: key.to_string(),
+        value: value.to_string(),
+    }
+}
 
 const PUBLIC_PARAMS: &str = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=";
 const MANIFEST_VERSION: &str = "TjxIhQyJHRZsqmidU_coSEl2dZUiBGvL";
@@ -18,6 +25,7 @@ fn register_rejects_invalid_public_params() {
         "http://example.invalid/".to_string(),
         "not-valid-base64".to_string(),
         MANIFEST_VERSION.to_string(),
+        None,
         None,
         None,
         None,
@@ -35,9 +43,51 @@ fn register_posts_to_server() {
         None,
         None,
         None,
+        None,
     );
     assert_eq!(server.hits(), 1);
     assert!(server.request_line().starts_with("POST "));
+}
+
+#[test]
+fn userauth_forces_protocol_version_header() {
+    let server = start_server("{}");
+    let _ = userauth_register(
+        format!("{}/sign_credential", server.url),
+        PUBLIC_PARAMS.to_string(),
+        MANIFEST_VERSION.to_string(),
+        Some(vec![kv("X-Protocol-Version", "bogus"), kv("X-Custom", "kept")]),
+        None,
+        None,
+        None,
+    );
+
+    let req = server.last_request();
+
+    let protocol = req
+        .lines()
+        .find_map(|l| {
+            let (k, v) = l.split_once(':')?;
+            k.trim()
+                .eq_ignore_ascii_case("X-Protocol-Version")
+                .then(|| v.trim().to_string())
+        })
+        .expect("X-Protocol-Version header must be present");
+    assert_eq!(
+        protocol,
+        protocol_version(),
+        "protocol header must equal the client protocol version"
+    );
+
+    let lower = req.to_lowercase();
+    assert!(
+        !lower.contains("bogus"),
+        "caller's protocol version must be overwritten: {req}"
+    );
+    assert!(
+        lower.contains("x-custom: kept"),
+        "other caller headers must propagate: {req}"
+    );
 }
 
 #[test]
@@ -48,6 +98,7 @@ fn submit_without_credential_succeeds() {
         "{}".to_string(),
         "IT".to_string(),
         "AS117".to_string(),
+        None,
         None,
         None,
         None,
@@ -70,6 +121,7 @@ fn submit_routes_through_proxy() {
         "{}".to_string(),
         "IT".to_string(),
         "AS117".to_string(),
+        None,
         Some(proxy.url.clone()),
         None,
         None,
@@ -90,6 +142,7 @@ fn submit_enforces_timeout() {
         "{}".to_string(),
         "IT".to_string(),
         "AS117".to_string(),
+        None,
         None,
         Some(0.2),
         None,

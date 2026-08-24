@@ -24,6 +24,7 @@ namespace ooniprobe {
         string url,
         string public_params,
         string manifest_version,
+        sequence<KeyValue>? headers,
         string? proxy,
         f32? timeout,
         string? user_agent
@@ -35,6 +36,7 @@ namespace ooniprobe {
         string content,
         string probe_cc,
         string probe_asn,
+        sequence<KeyValue>? headers,
         string? proxy,
         f32? timeout,
         string? user_agent,
