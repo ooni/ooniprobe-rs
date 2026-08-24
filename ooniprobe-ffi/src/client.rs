@@ -97,16 +97,7 @@ pub fn build_client(
     Ok(client)
 }
 
-pub fn client_get(
-    url: String,
-    headers: Vec<KeyValue>,
-    query: Vec<KeyValue>,
-    proxy: Option<String>,
-    timeout: Option<f32>,
-    user_agent: Option<String>,
-) -> Result<HttpResponse, OoniError> {
-    let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
-
+pub(crate) fn build_header_map(headers: Vec<KeyValue>) -> Result<HeaderMap, OoniError> {
     let mut header_map = HeaderMap::new();
     for kv in headers {
         let name = HeaderName::from_bytes(kv.key.as_bytes())
@@ -117,6 +108,20 @@ pub fn client_get(
 
         header_map.insert(name, value);
     }
+    Ok(header_map)
+}
+
+pub fn client_get(
+    url: String,
+    headers: Vec<KeyValue>,
+    query: Vec<KeyValue>,
+    proxy: Option<String>,
+    timeout: Option<f32>,
+    user_agent: Option<String>,
+) -> Result<HttpResponse, OoniError> {
+    let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
+
+    let header_map = build_header_map(headers)?;
 
     let query: Vec<(String, String)> = query.into_iter().map(|kv| (kv.key, kv.value)).collect();
 
@@ -140,16 +145,7 @@ pub fn client_post(
 ) -> Result<HttpResponse, OoniError> {
     let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
 
-    let mut header_map = HeaderMap::new();
-    for kv in headers {
-        let name = HeaderName::from_bytes(kv.key.as_bytes())
-            .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
-
-        let value = HeaderValue::from_str(&kv.value)
-            .map_err(|e| OoniError::HttpClientError(format!("{:?}", e)))?;
-
-        header_map.insert(name, value);
-    }
+    let header_map = build_header_map(headers)?;
 
     let request = client
         .request("POST", &url)
@@ -335,5 +331,43 @@ mod tests {
         let a = build_client(None, None, None).unwrap();
         let b = build_client(None, None, Some(DEFAULT_USER_AGENT)).unwrap();
         assert!(Arc::ptr_eq(&a, &b), "None user agent must map to the same key as the default");
+    }
+
+    fn kv(key: &str, value: &str) -> KeyValue {
+        KeyValue {
+            key: key.to_string(),
+            value: value.to_string(),
+        }
+    }
+
+    #[test]
+    fn build_header_map_inserts_headers() {
+        let map = build_header_map(vec![kv("X-A", "1"), kv("X-B", "2")]).unwrap();
+        assert_eq!(map.get("x-a").unwrap(), "1");
+        assert_eq!(map.get("x-b").unwrap(), "2");
+    }
+
+    #[test]
+    fn build_header_map_last_duplicate_wins() {
+        let map = build_header_map(vec![kv("X-Dup", "first"), kv("X-Dup", "second")]).unwrap();
+        assert_eq!(map.get("x-dup").unwrap(), "second");
+    }
+
+    #[test]
+    fn build_header_map_empty_is_empty() {
+        let map = build_header_map(vec![]).unwrap();
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn build_header_map_rejects_invalid_name() {
+        let result = build_header_map(vec![kv("Bad Name", "v")]);
+        assert!(result.is_err(), "invalid header name should error");
+    }
+
+    #[test]
+    fn build_header_map_rejects_invalid_value() {
+        let result = build_header_map(vec![kv("X-Bad", "line1\nline2")]);
+        assert!(result.is_err(), "invalid header value should error");
     }
 }
