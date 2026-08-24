@@ -3,11 +3,23 @@ use std::ptr;
 
 use serde_json::json;
 
+use crate::client::KeyValue;
 use crate::userauth::{
     get_probe_id as get_probe_id_impl, protocol_version as protocol_version_impl,
     userauth_register as userauth_register_impl, userauth_submit as userauth_submit_impl,
     CredentialConfig,
 };
+
+// A null `headers_json` means no headers; otherwise it must be a JSON array of
+// `{"key": "...", "value": "..."}` objects.
+unsafe fn parse_headers(headers_json: *const c_char) -> Result<Option<Vec<KeyValue>>, String> {
+    match c_string_to_owned(headers_json) {
+        Some(raw) => serde_json::from_str::<Vec<KeyValue>>(&raw)
+            .map(Some)
+            .map_err(|e| format!("invalid headers: {e}")),
+        None => Ok(None),
+    }
+}
 
 /// Flat C-ABI result carrying either a JSON payload or an error string.
 ///
@@ -59,6 +71,7 @@ pub unsafe extern "C" fn userauth_register(
     url: *const c_char,
     public_params: *const c_char,
     manifest_version: *const c_char,
+    headers_json: *const c_char,
     proxy: *const c_char,
     timeout: f32,
     user_agent: *const c_char,
@@ -71,6 +84,10 @@ pub unsafe extern "C" fn userauth_register(
         return ClientResponse::err("null or invalid input".to_string());
     };
 
+    let headers = match parse_headers(headers_json) {
+        Ok(headers) => headers,
+        Err(e) => return ClientResponse::err(e),
+    };
     let proxy = c_string_to_owned(proxy);
     let user_agent = c_string_to_owned(user_agent);
 
@@ -78,6 +95,7 @@ pub unsafe extern "C" fn userauth_register(
         url,
         public_params,
         manifest_version,
+        headers,
         proxy,
         timeout_from_secs(timeout),
         user_agent,
@@ -101,6 +119,7 @@ pub unsafe extern "C" fn userauth_submit(
     content: *const c_char,
     probe_cc: *const c_char,
     probe_asn: *const c_char,
+    headers_json: *const c_char,
     proxy: *const c_char,
     timeout: f32,
     user_agent: *const c_char,
@@ -115,6 +134,10 @@ pub unsafe extern "C" fn userauth_submit(
         return ClientResponse::err("null or invalid input".to_string());
     };
 
+    let headers = match parse_headers(headers_json) {
+        Ok(headers) => headers,
+        Err(e) => return ClientResponse::err(e),
+    };
     let proxy = c_string_to_owned(proxy);
     let user_agent = c_string_to_owned(user_agent);
 
@@ -133,6 +156,7 @@ pub unsafe extern "C" fn userauth_submit(
         content,
         probe_cc,
         probe_asn,
+        headers,
         proxy,
         timeout_from_secs(timeout),
         user_agent,
@@ -260,6 +284,7 @@ mod tests {
                 url.as_ptr(),
                 public_params.as_ptr(),
                 manifest_version.as_ptr(),
+                ptr::null(),
                 proxy.as_ptr(),
                 0.0,
                 ptr::null(),
@@ -290,6 +315,7 @@ mod tests {
                 public_params.as_ptr(),
                 manifest_version.as_ptr(),
                 ptr::null(),
+                ptr::null(),
                 0.0,
                 ptr::null(),
             )
@@ -315,6 +341,7 @@ mod tests {
                 public_params.as_ptr(),
                 manifest_version.as_ptr(),
                 ptr::null(),
+                ptr::null(),
                 0.0,
                 ptr::null(),
             )
@@ -339,6 +366,7 @@ mod tests {
                 public_params.as_ptr(),
                 manifest_version.as_ptr(),
                 ptr::null(),
+                ptr::null(),
                 0.0,
                 ptr::null(),
             )
@@ -352,6 +380,70 @@ mod tests {
             error.is_some_and(|e| e.contains("decode")),
             "expected a decode error"
         );
+    }
+
+    #[test]
+    fn register_with_invalid_headers_returns_error() {
+        let url = CString::new("http://example.invalid/api/v1/sign_credential").unwrap();
+        let public_params = CString::new(PUBLIC_PARAMS).unwrap();
+        let manifest_version = CString::new(MANIFEST_VERSION).unwrap();
+        let bad_headers = CString::new("{ not an array").unwrap();
+
+        let response = unsafe {
+            userauth_register(
+                url.as_ptr(),
+                public_params.as_ptr(),
+                manifest_version.as_ptr(),
+                bad_headers.as_ptr(),
+                ptr::null(),
+                0.0,
+                ptr::null(),
+            )
+        };
+        let error = unsafe { read_field(response.error) };
+        let json = unsafe { read_field(response.json) };
+        unsafe { client_response_free(response) };
+
+        assert!(json.is_none(), "json should be null on error");
+        assert!(
+            error.is_some_and(|e| e.contains("invalid headers")),
+            "expected an invalid-headers error"
+        );
+    }
+
+    #[test]
+    fn parse_headers_null_is_none() {
+        let result = unsafe { parse_headers(ptr::null()) };
+        assert!(matches!(result, Ok(None)));
+    }
+
+    #[test]
+    fn parse_headers_valid_json_parses() {
+        let json =
+            CString::new(r#"[{"key":"X-A","value":"1"},{"key":"X-B","value":"2"}]"#).unwrap();
+        let headers = unsafe { parse_headers(json.as_ptr()) }
+            .expect("valid headers should parse")
+            .expect("non-null input should be Some");
+
+        assert_eq!(headers.len(), 2);
+        assert_eq!(headers[0].key, "X-A");
+        assert_eq!(headers[0].value, "1");
+        assert_eq!(headers[1].key, "X-B");
+        assert_eq!(headers[1].value, "2");
+    }
+
+    #[test]
+    fn parse_headers_empty_array_is_some_empty() {
+        let json = CString::new("[]").unwrap();
+        let headers = unsafe { parse_headers(json.as_ptr()) }.unwrap().unwrap();
+        assert!(headers.is_empty());
+    }
+
+    #[test]
+    fn parse_headers_invalid_json_errors() {
+        let json = CString::new("{ not an array").unwrap();
+        let err = unsafe { parse_headers(json.as_ptr()) }.unwrap_err();
+        assert!(err.contains("invalid headers"), "got: {err}");
     }
 
     #[test]
@@ -370,6 +462,7 @@ mod tests {
                 content.as_ptr(),
                 probe_cc.as_ptr(),
                 probe_asn.as_ptr(),
+                ptr::null(),
                 proxy.as_ptr(),
                 0.0,
                 ptr::null(),
@@ -403,6 +496,7 @@ mod tests {
                 content.as_ptr(),
                 probe_cc.as_ptr(),
                 probe_asn.as_ptr(),
+                ptr::null(),
                 ptr::null(),
                 0.0,
                 ptr::null(),
