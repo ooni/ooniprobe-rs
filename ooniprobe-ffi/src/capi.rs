@@ -267,6 +267,41 @@ mod tests {
         (format!("http://{addr}"), hits)
     }
 
+    #[test]
+    fn parse_headers_null_is_none() {
+        let result = unsafe { parse_headers(ptr::null()) };
+        assert!(matches!(result, Ok(None)));
+    }
+
+    #[test]
+    fn parse_headers_valid_json_parses() {
+        let json =
+            CString::new(r#"[{"key":"X-A","value":"1"},{"key":"X-B","value":"2"}]"#).unwrap();
+        let headers = unsafe { parse_headers(json.as_ptr()) }
+            .expect("valid headers should parse")
+            .expect("non-null input should be Some");
+
+        assert_eq!(headers.len(), 2);
+        assert_eq!(headers[0].key, "X-A");
+        assert_eq!(headers[0].value, "1");
+        assert_eq!(headers[1].key, "X-B");
+        assert_eq!(headers[1].value, "2");
+    }
+
+    #[test]
+    fn parse_headers_empty_array_is_some_empty() {
+        let json = CString::new("[]").unwrap();
+        let headers = unsafe { parse_headers(json.as_ptr()) }.unwrap().unwrap();
+        assert!(headers.is_empty());
+    }
+
+    #[test]
+    fn parse_headers_invalid_json_errors() {
+        let json = CString::new("{ not an array").unwrap();
+        let err = unsafe { parse_headers(json.as_ptr()) }.unwrap_err();
+        assert!(err.contains("invalid headers"), "got: {err}");
+    }
+
     const PUBLIC_PARAMS: &str = "AdqzxWc0xFMFlXygX+KfKxRGy6EEOgukeGokXmfsBA0QAUiqSrbV636keUJkvV8SfGpuD3P1sqor6w6jlTZxUIN6AwAAAAAAAADK2ygnqfhicm2pXO8Tu73Pu4AhHrJExfG1rW8uLk1UfQzxKzdpwnhmUx7qsdD9yXoy3J1B4Bh4OXMan2VfTPJVvs7JmVFr3V6iSqgoV1+RJfgQZXq5WB9439tng+4bUWs=";
     const MANIFEST_VERSION: &str = "TjxIhQyJHRZsqmidU_coSEl2dZUiBGvL";
 
@@ -409,41 +444,6 @@ mod tests {
             error.is_some_and(|e| e.contains("invalid headers")),
             "expected an invalid-headers error"
         );
-    }
-
-    #[test]
-    fn parse_headers_null_is_none() {
-        let result = unsafe { parse_headers(ptr::null()) };
-        assert!(matches!(result, Ok(None)));
-    }
-
-    #[test]
-    fn parse_headers_valid_json_parses() {
-        let json =
-            CString::new(r#"[{"key":"X-A","value":"1"},{"key":"X-B","value":"2"}]"#).unwrap();
-        let headers = unsafe { parse_headers(json.as_ptr()) }
-            .expect("valid headers should parse")
-            .expect("non-null input should be Some");
-
-        assert_eq!(headers.len(), 2);
-        assert_eq!(headers[0].key, "X-A");
-        assert_eq!(headers[0].value, "1");
-        assert_eq!(headers[1].key, "X-B");
-        assert_eq!(headers[1].value, "2");
-    }
-
-    #[test]
-    fn parse_headers_empty_array_is_some_empty() {
-        let json = CString::new("[]").unwrap();
-        let headers = unsafe { parse_headers(json.as_ptr()) }.unwrap().unwrap();
-        assert!(headers.is_empty());
-    }
-
-    #[test]
-    fn parse_headers_invalid_json_errors() {
-        let json = CString::new("{ not an array").unwrap();
-        let err = unsafe { parse_headers(json.as_ptr()) }.unwrap_err();
-        assert!(err.contains("invalid headers"), "got: {err}");
     }
 
     #[test]
