@@ -157,6 +157,28 @@ pub fn client_post(
     Ok(response)
 }
 
+pub fn client_put(
+    url: String,
+    headers: Vec<KeyValue>,
+    payload: String,
+    proxy: Option<String>,
+    timeout: Option<f32>,
+    user_agent: Option<String>,
+) -> Result<HttpResponse, OoniError> {
+    let client = build_client(proxy.as_deref(), timeout, user_agent.as_deref())?;
+
+    let header_map = build_header_map(headers)?;
+
+    let request = client
+        .request("PUT", &url)
+        .map(|b| b.headers(header_map).body(payload))
+        .and_then(|b| b.build().map_err(Into::into))?;
+
+    let response = client.execute(request).map(Into::into)?;
+
+    Ok(response)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

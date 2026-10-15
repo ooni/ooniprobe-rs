@@ -1,11 +1,11 @@
-//! Offline coverage for the uniffi client_get / client_post surface.
+//! Offline coverage for the uniffi client_get / client_post / client_put surface.
 
 mod common;
 
 use std::time::Duration;
 
 use common::{start_keepalive_server, start_server, start_server_with_delay};
-use uniffi_ooniprobe::{client_get, client_post, KeyValue, OoniError};
+use uniffi_ooniprobe::{client_get, client_post, client_put, KeyValue, OoniError};
 
 fn kv(key: &str, value: &str) -> KeyValue {
     KeyValue {
@@ -80,6 +80,25 @@ fn post_forwards_body() {
     assert_eq!(resp.status_code, 200);
     let req = server.last_request();
     assert!(req.starts_with("POST "), "expected POST, got: {req}");
+    assert!(req.contains(r#"{"k":"v"}"#), "payload missing from: {req}");
+}
+
+#[test]
+fn put_forwards_body() {
+    let server = start_server("ok");
+    let resp = client_put(
+        format!("{}/submit", server.url),
+        vec![kv("Content-Type", "application/json")],
+        r#"{"k":"v"}"#.to_string(),
+        None,
+        None,
+        None,
+    )
+    .expect("PUT should succeed");
+
+    assert_eq!(resp.status_code, 200);
+    let req = server.last_request();
+    assert!(req.starts_with("PUT "), "expected PUT, got: {req}");
     assert!(req.contains(r#"{"k":"v"}"#), "payload missing from: {req}");
 }
 
