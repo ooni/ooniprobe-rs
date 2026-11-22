@@ -3,7 +3,7 @@
 mod common;
 
 use common::start_server;
-use uniffi_ooniprobe::{client_get, client_post, OoniError};
+use passport::{client_get, client_post, OoniError};
 
 #[test]
 fn client_get_routes_through_proxy() {

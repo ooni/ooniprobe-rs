@@ -17,14 +17,14 @@ dependencies {
 tasks.jar {
     val osName = project.findProperty("osName")?.toString() ?: "universal"
 
-    archiveBaseName.set("ooniprobe-desktop")
+    archiveBaseName.set("passport")
     archiveAppendix.set(osName)
     archiveVersion.set("")
     
     from(sourceSets.main.get().output)
     
     manifest {
-        attributes["Implementation-Title"] = "OoniProbe Desktop"
+        attributes["Implementation-Title"] = "OONI Probe Passport"
         attributes["Implementation-Version"] = project.version
     }
 }

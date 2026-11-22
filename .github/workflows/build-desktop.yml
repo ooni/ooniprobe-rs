@@ -60,12 +60,13 @@ jobs:
       - name: Upload JAR Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-linux
+          name: passport-linux
           path: desktop/build/libs/*.jar
 
   publish-linux:
     runs-on: ubuntu-latest
     needs: build-linux
+    if: github.ref_type == 'tag' || github.ref == 'refs/heads/main'
 
     permissions:
       contents: write
@@ -91,7 +92,7 @@ jobs:
       - name: Download JAR artifact
         uses: actions/download-artifact@v4
         with:
-          name: desktop-linux
+          name: passport-linux
           path: maven/desktop
 
       - name: Set Project Version
@@ -151,13 +152,14 @@ jobs:
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-macos
+          name: passport-macos
           path: desktop/build/libs/*.jar
 
 
   publish-macos:
     runs-on: ubuntu-latest
     needs: build-macos
+    if: github.ref_type == 'tag' || github.ref == 'refs/heads/main'
 
     permissions:
       contents: write
@@ -182,7 +184,7 @@ jobs:
       - name: Download macOS Artifact
         uses: actions/download-artifact@v4
         with:
-          name: desktop-macos
+          name: passport-macos
           path: maven/desktop
 
       - name: Set Project Version
@@ -243,12 +245,13 @@ jobs:
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-windows
+          name: passport-windows
           path: desktop/build/libs/*.jar
 
   publish-windows:
     runs-on: ubuntu-latest
     needs: build-windows
+    if: github.ref_type == 'tag' || github.ref == 'refs/heads/main'
 
     permissions:
       contents: write
@@ -273,7 +276,7 @@ jobs:
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
-          name: desktop-windows
+          name: passport-windows
           path: maven/desktop
 
       - name: Set Project Version

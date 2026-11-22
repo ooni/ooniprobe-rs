@@ -1,8 +1,8 @@
-CRATE := ooniprobe-ffi
-UDL := ooniprobe-ffi/src/ooniprobe.udl
-ANDROID_MODULE := android/ooniprobe
+CRATE := ooniprobe-passport
+UDL := $(CRATE)/src/passport.udl
+ANDROID_MODULE := android/passport
 JNI_DIR := $(ANDROID_MODULE)/src/main/jniLibs
-BINDINGS_DIR := $(ANDROID_MODULE)/src/main/java/org/ooni/ooniprobe
+BINDINGS_DIR := $(ANDROID_MODULE)/src/main/java
 
 NDK_HOME ?= $(ANDROID_NDK_HOME)
 
@@ -12,8 +12,8 @@ ANDROID_TARGETS := \
 	i686-linux-android \
 	x86_64-linux-android
 
-XCFRAMEWORK_DIR := ios/ooniProbe.xcframework
-SWIFT_DIR := ios/Sources/OoniProbe
+XCFRAMEWORK_DIR := ios/passport.xcframework
+SWIFT_DIR := ios/Sources/Passport
 
 IPHONEOS_SDK = $(shell xcrun --sdk iphoneos --show-sdk-path)
 IPHONESIMULATOR_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path)
@@ -78,7 +78,7 @@ bindings:
 
 .PHONY: aar
 aar:
-	cd android && ./gradlew :ooniprobe:assembleRelease
+	cd android && ./gradlew :passport:assembleRelease
 
 .PHONY: android
 android: android-so bindings aar
@@ -109,9 +109,9 @@ ios-libs: ios-targets
 ios-universal-sim: ios-libs
 	@mkdir -p target/ios-simulator-universal/release
 	lipo -create \
-		target/aarch64-apple-ios-sim/release/libuniffi_ooniprobe.a \
-		target/x86_64-apple-ios/release/libuniffi_ooniprobe.a \
-		-output target/ios-simulator-universal/release/libuniffi_ooniprobe.a
+		target/aarch64-apple-ios-sim/release/libpassport.a \
+		target/x86_64-apple-ios/release/libpassport.a \
+		-output target/ios-simulator-universal/release/libpassport.a
 
 .PHONY: ios-bindings
 ios-bindings:
@@ -127,8 +127,8 @@ ios-xcframework: ios-universal-sim ios-bindings
 	cp $(SWIFT_DIR)/ooniprobeFFI.modulemap $(SWIFT_DIR)/module.modulemap
 	
 	xcodebuild -create-xcframework \
-		-library target/aarch64-apple-ios/release/libuniffi_ooniprobe.a -headers $(SWIFT_DIR) \
-		-library target/ios-simulator-universal/release/libuniffi_ooniprobe.a -headers $(SWIFT_DIR) \
+		-library target/aarch64-apple-ios/release/libpassport.a -headers $(SWIFT_DIR) \
+		-library target/ios-simulator-universal/release/libpassport.a -headers $(SWIFT_DIR) \
 		-output $(XCFRAMEWORK_DIR)
 
 .PHONY: ios
@@ -161,10 +161,10 @@ linux/aarch64:
 .PHONY: desktop-linux
 desktop-linux:
 	@mkdir -p $(DESKTOP_RESOURCES)/linux-x86-64
-	cp target/x86_64-unknown-linux-gnu/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-x86-64/
+	cp target/x86_64-unknown-linux-gnu/release/libpassport.so $(DESKTOP_RESOURCES)/linux-x86-64/
 
 	@mkdir -p $(DESKTOP_RESOURCES)/linux-aarch64
-	cp target/aarch64-unknown-linux-gnu/release/libuniffi_ooniprobe.so $(DESKTOP_RESOURCES)/linux-aarch64/
+	cp target/aarch64-unknown-linux-gnu/release/libpassport.so $(DESKTOP_RESOURCES)/linux-aarch64/
 
 	$(MAKE) desktop-jar OS_NAME=linux
 
@@ -183,9 +183,9 @@ macos-libs: macos-targets
 desktop-macos: macos-libs
 	@mkdir -p $(DESKTOP_RESOURCES)/darwin-universal
 	lipo -create \
-		target/aarch64-apple-darwin/release/libuniffi_ooniprobe.dylib \
-		target/x86_64-apple-darwin/release/libuniffi_ooniprobe.dylib \
-		-output $(DESKTOP_RESOURCES)/darwin-universal/libuniffi_ooniprobe.dylib
+		target/aarch64-apple-darwin/release/libpassport.dylib \
+		target/x86_64-apple-darwin/release/libpassport.dylib \
+		-output $(DESKTOP_RESOURCES)/darwin-universal/libpassport.dylib
 
 	$(MAKE) desktop-jar OS_NAME=macos
 
@@ -197,7 +197,7 @@ windows:
 .PHONY: desktop-windows
 desktop-windows: windows
 	@mkdir -p $(DESKTOP_RESOURCES)/win32-x86-64
-	cp target/x86_64-pc-windows-gnu/release/uniffi_ooniprobe.dll $(DESKTOP_RESOURCES)/win32-x86-64/
+	cp target/x86_64-pc-windows-gnu/release/passport.dll $(DESKTOP_RESOURCES)/win32-x86-64/
 	$(MAKE) desktop-jar OS_NAME=windows
 
 .PHONY: desktop-jar
@@ -217,19 +217,19 @@ staticlib-linux-%:
 	rustup target add $(LINUX_TRIPLE_$*)
 	cargo build -p $(CRATE) --target $(LINUX_TRIPLE_$*) --release
 	@mkdir -p $(STATICLIB_DIR)/linux/$*
-	cp target/$(LINUX_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/linux/$*/
+	cp target/$(LINUX_TRIPLE_$*)/release/libpassport.a $(STATICLIB_DIR)/linux/$*/
 	$(MAKE) ffi-header
 
 staticlib-windows-%:
 	rustup target add $(WINDOWS_TRIPLE_$*)
 	cargo build -p $(CRATE) --target $(WINDOWS_TRIPLE_$*) --release
 	@mkdir -p $(STATICLIB_DIR)/windows/$*
-	cp target/$(WINDOWS_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/windows/$*/
+	cp target/$(WINDOWS_TRIPLE_$*)/release/libpassport.a $(STATICLIB_DIR)/windows/$*/
 	$(MAKE) ffi-header
 
 staticlib-macos-%:
 	rustup target add $(MACOS_TRIPLE_$*)
 	cargo build -p $(CRATE) --target $(MACOS_TRIPLE_$*) --release
 	@mkdir -p $(STATICLIB_DIR)/macos/$*
-	cp target/$(MACOS_TRIPLE_$*)/release/libuniffi_ooniprobe.a $(STATICLIB_DIR)/macos/$*/
+	cp target/$(MACOS_TRIPLE_$*)/release/libpassport.a $(STATICLIB_DIR)/macos/$*/
 	$(MAKE) ffi-header

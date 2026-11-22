@@ -20,7 +20,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Run tests
-        run: cargo test -p ooniprobe-ffi --all-targets --locked --verbose
+        run: cargo test -p ooniprobe-passport --all-targets --locked --verbose
 
   ooniprobe-service:
     runs-on: ubuntu-latest

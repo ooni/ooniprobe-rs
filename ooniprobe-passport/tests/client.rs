@@ -5,7 +5,7 @@ mod common;
 use std::time::Duration;
 
 use common::{start_keepalive_server, start_server, start_server_with_delay};
-use uniffi_ooniprobe::{client_get, client_post, client_put, KeyValue, OoniError};
+use passport::{client_get, client_post, client_put, KeyValue, OoniError};
 
 fn kv(key: &str, value: &str) -> KeyValue {
     KeyValue {
