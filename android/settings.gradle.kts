@@ -1,2 +1,2 @@
-rootProject.name = "passport"
+rootProject.name = "passport-android"
 include(":passport")
