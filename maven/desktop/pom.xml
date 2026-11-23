@@ -39,7 +39,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <desktop.jar.name>passport.jar</desktop.jar.name>
+        <desktop.jar.name>${project.artifactId}.jar</desktop.jar.name>
         <project.artifact.file>${project.basedir}/${desktop.jar.name}</project.artifact.file>
     </properties>
 
