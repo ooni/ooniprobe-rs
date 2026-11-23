@@ -39,7 +39,7 @@ jobs:
             cflags: -m32
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -68,7 +68,7 @@ jobs:
           CXXFLAGS: ${{ matrix.cflags }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: lib-linux-${{ matrix.arch }}
           path: target/lib
@@ -84,7 +84,7 @@ jobs:
           - arch: aarch64
             rust-target: aarch64-apple-darwin
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -97,7 +97,7 @@ jobs:
         run: make staticlib-macos-${{ matrix.arch }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: lib-macos-${{ matrix.arch }}
           path: target/lib
@@ -120,7 +120,7 @@ jobs:
             long-double-flags: -mlong-double-64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -147,7 +147,7 @@ jobs:
           BINDGEN_EXTRA_CLANG_ARGS: ${{ matrix.long-double-flags }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: lib-windows-${{ matrix.arch }}
           path: target/lib
@@ -158,10 +158,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: lib-*
           merge-multiple: true
@@ -171,7 +171,7 @@ jobs:
         run: tar -czf target/staticlib.tar.gz -C target lib
 
       - name: Upload combined bundle artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ooniprobe-ffi-staticlib
           path: target/staticlib.tar.gz
