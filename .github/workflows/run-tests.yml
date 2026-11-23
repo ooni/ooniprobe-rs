@@ -18,9 +18,31 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
 
       - name: Run tests
-        run: cargo test -p ooniprobe-ffi --all-targets --locked --verbose
+        run: cargo llvm-cov -p ooniprobe-ffi --all-targets --locked --verbose --lcov --output-path lcov.info
+
+      - name: Coverage summary
+        run: |
+          {
+            echo '## ooniprobe-ffi coverage'
+            echo '```'
+            cargo llvm-cov report --summary-only
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-ooniprobe-ffi
+          path: lcov.info
 
   ooniprobe-service:
     runs-on: ubuntu-latest
@@ -30,9 +52,31 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
 
       - name: Run tests
-        run: cargo test -p ooniprobe-services --all-targets --locked --verbose
+        run: cargo llvm-cov -p ooniprobe-services --all-targets --locked --verbose --lcov --output-path lcov.info
+
+      - name: Coverage summary
+        run: |
+          {
+            echo '## ooniprobe-services coverage'
+            echo '```'
+            cargo llvm-cov report --summary-only
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-ooniprobe-services
+          path: lcov.info
 
   test-helpers:
     runs-on: ubuntu-latest
@@ -42,6 +86,28 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
 
       - name: Run tests
-        run: cargo test -p test-helpers --all-targets --locked --verbose
+        run: cargo llvm-cov -p test-helpers --all-targets --locked --verbose --lcov --output-path lcov.info
+
+      - name: Coverage summary
+        run: |
+          {
+            echo '## test-helpers coverage'
+            echo '```'
+            cargo llvm-cov report --summary-only
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-test-helpers
+          path: lcov.info
