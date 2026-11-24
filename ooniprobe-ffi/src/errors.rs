@@ -91,3 +91,88 @@ impl From<std::io::Error> for OoniError {
         OoniError::Other(e.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::OoniError;
+    use base64::Engine;
+    use ooniprobe_services::client::Error as ClientError;
+
+    #[test]
+    fn display_includes_variant_prefix() {
+        assert_eq!(
+            OoniError::TimeoutError("slow".to_string()).to_string(),
+            "Request timed out: slow"
+        );
+        assert_eq!(
+            OoniError::InvalidCredential("bad".to_string()).to_string(),
+            "Invalid credential: bad"
+        );
+    }
+
+    #[test]
+    fn base64_error_maps_to_base64_decode_error() {
+        let e = base64::prelude::BASE64_STANDARD
+            .decode("not base64!")
+            .unwrap_err();
+        assert!(matches!(
+            OoniError::from(e),
+            OoniError::Base64DecodeError(_)
+        ));
+    }
+
+    #[test]
+    fn bincode_error_maps_to_binary_decode_error() {
+        let e = bincode::deserialize::<u64>(&[1]).unwrap_err();
+        assert!(matches!(
+            OoniError::from(e),
+            OoniError::BinaryDecodeError(_)
+        ));
+    }
+
+    #[test]
+    fn client_error_maps_by_kind() {
+        assert!(matches!(
+            OoniError::from(ClientError::UndetectedCharset),
+            OoniError::ResponseError(_)
+        ));
+        assert!(matches!(
+            OoniError::from(ClientError::InvalidHttpMethod),
+            OoniError::HttpClientError(_)
+        ));
+        assert!(matches!(
+            OoniError::from(ClientError::Io(std::io::Error::other("boom"))),
+            OoniError::HttpClientError(_)
+        ));
+    }
+
+    #[test]
+    fn credential_error_maps_to_crypto_error() {
+        let e = ooniauth_core::errors::CredentialError::CredentialExpired;
+        assert!(matches!(OoniError::from(e), OoniError::CryptoError(_)));
+    }
+
+    #[test]
+    fn cmz_error_maps_to_crypto_error() {
+        let e = cmz::CMZError::PrivkeyMissing("cred");
+        assert!(matches!(OoniError::from(e), OoniError::CryptoError(_)));
+    }
+
+    #[test]
+    fn serde_json_error_maps_to_serialization_error() {
+        let e = serde_json::from_str::<serde_json::Value>("{").unwrap_err();
+        assert!(matches!(
+            OoniError::from(e),
+            OoniError::SerializationError(_)
+        ));
+    }
+
+    #[test]
+    fn io_error_maps_to_other() {
+        let e = std::io::Error::other("disk on fire");
+        match OoniError::from(e) {
+            OoniError::Other(msg) => assert_eq!(msg, "disk on fire"),
+            other => panic!("expected Other, got {other:?}"),
+        }
+    }
+}
