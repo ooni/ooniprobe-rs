@@ -32,7 +32,7 @@ jobs:
           {
             echo '## ooniprobe-ffi coverage'
             echo '```'
-            cargo llvm-cov report --summary-only
+            cargo llvm-cov report -p ooniprobe-ffi --summary-only
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -58,7 +58,7 @@ jobs:
           {
             echo '## ooniprobe-services coverage'
             echo '```'
-            cargo llvm-cov report --summary-only
+            cargo llvm-cov report -p ooniprobe-services --summary-only 
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -84,6 +84,6 @@ jobs:
           {
             echo '## test-helpers coverage'
             echo '```'
-            cargo llvm-cov report --summary-only
+            cargo llvm-cov report -p test-helpers --summary-only
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
