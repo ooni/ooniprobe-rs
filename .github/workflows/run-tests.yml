@@ -14,34 +14,76 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
 
       - name: Run tests
-        run: cargo test -p ooniprobe-ffi --all-targets --locked --verbose
+        run: cargo llvm-cov -p ooniprobe-ffi --all-targets --locked --verbose --no-report
+
+      - name: Coverage summary
+        run: |
+          {
+            echo '## ooniprobe-ffi coverage'
+            echo '```'
+            cargo llvm-cov report -p ooniprobe-ffi --summary-only
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   ooniprobe-service:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
 
       - name: Run tests
-        run: cargo test -p ooniprobe-services --all-targets --locked --verbose
+        run: cargo llvm-cov -p ooniprobe-services --all-targets --locked --verbose --no-report
+
+      - name: Coverage summary
+        run: |
+          {
+            echo '## ooniprobe-services coverage'
+            echo '```'
+            cargo llvm-cov report -p ooniprobe-services --summary-only 
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   test-helpers:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
 
       - name: Run tests
-        run: cargo test -p test-helpers --all-targets --locked --verbose
+        run: cargo llvm-cov -p test-helpers --all-targets --locked --verbose --no-report
+
+      - name: Coverage summary
+        run: |
+          {
+            echo '## test-helpers coverage'
+            echo '```'
+            cargo llvm-cov report -p test-helpers --summary-only
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

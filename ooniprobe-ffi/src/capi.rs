@@ -234,7 +234,11 @@ mod tests {
     }
 
     fn start_mock_proxy() -> (String, Arc<AtomicUsize>) {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock proxy");
+        start_mock_server(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+    }
+
+    fn start_mock_server(response: &'static [u8]) -> (String, Arc<AtomicUsize>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock server");
         let addr = listener.local_addr().expect("local addr");
         let hits = Arc::new(AtomicUsize::new(0));
 
@@ -257,9 +261,7 @@ mod tests {
                     }
                 }
                 hits_thread.fetch_add(1, Ordering::SeqCst);
-                let _ = stream.write_all(
-                    b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}",
-                );
+                let _ = stream.write_all(response);
                 let _ = stream.flush();
             }
         });
@@ -545,6 +547,159 @@ mod tests {
             error.is_some(),
             "expected an error for an invalid credential"
         );
+    }
+
+    #[test]
+    fn timeout_from_secs_only_keeps_positive_values() {
+        assert_eq!(timeout_from_secs(2.5), Some(2.5));
+        assert_eq!(timeout_from_secs(0.0), None);
+        assert_eq!(timeout_from_secs(-1.0), None);
+    }
+
+    #[test]
+    fn c_string_to_owned_rejects_non_utf8() {
+        let non_utf8 = CString::new(vec![b'f', 0xff]).unwrap();
+        assert_eq!(unsafe { c_string_to_owned(non_utf8.as_ptr()) }, None);
+    }
+
+    #[test]
+    fn register_with_server_error_returns_status_without_credential() {
+        let (server_url, hits) = start_mock_server(
+            b"HTTP/1.1 403 Forbidden\r\nContent-Length: 6\r\nConnection: close\r\n\r\ndenied",
+        );
+
+        let url = CString::new(format!("{server_url}/api/v1/sign_credential")).unwrap();
+        let public_params = CString::new(PUBLIC_PARAMS).unwrap();
+        let manifest_version = CString::new(MANIFEST_VERSION).unwrap();
+
+        let response = unsafe {
+            userauth_register(
+                url.as_ptr(),
+                public_params.as_ptr(),
+                manifest_version.as_ptr(),
+                ptr::null(),
+                ptr::null(),
+                0.0,
+                ptr::null(),
+            )
+        };
+        let error = unsafe { read_field(response.error) };
+        let json = unsafe { read_field(response.json) };
+        unsafe { client_response_free(response) };
+
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+        assert!(error.is_none(), "unexpected error: {error:?}");
+
+        let parsed: serde_json::Value = serde_json::from_str(&json.expect("json payload")).unwrap();
+        assert_eq!(parsed["status_code"], 403);
+        assert_eq!(parsed["body"], "denied");
+        assert!(parsed["credential"].is_null());
+    }
+
+    #[test]
+    fn submit_with_null_required_input_returns_error() {
+        let content = CString::new("{}").unwrap();
+        let probe_cc = CString::new("IT").unwrap();
+        let probe_asn = CString::new("AS117").unwrap();
+
+        let response = unsafe {
+            userauth_submit(
+                ptr::null(),
+                content.as_ptr(),
+                probe_cc.as_ptr(),
+                probe_asn.as_ptr(),
+                ptr::null(),
+                ptr::null(),
+                0.0,
+                ptr::null(),
+                ptr::null(),
+            )
+        };
+        let error = unsafe { read_field(response.error) };
+        let json = unsafe { read_field(response.json) };
+        unsafe { client_response_free(response) };
+
+        assert!(json.is_none(), "json should be null on error");
+        assert_eq!(error.as_deref(), Some("null or invalid input"));
+    }
+
+    #[test]
+    fn submit_with_invalid_headers_returns_error() {
+        let url = CString::new("http://example.invalid/api/v1/submit_measurement").unwrap();
+        let content = CString::new("{}").unwrap();
+        let probe_cc = CString::new("IT").unwrap();
+        let probe_asn = CString::new("AS117").unwrap();
+        let bad_headers = CString::new("{ not an array").unwrap();
+
+        let response = unsafe {
+            userauth_submit(
+                url.as_ptr(),
+                content.as_ptr(),
+                probe_cc.as_ptr(),
+                probe_asn.as_ptr(),
+                bad_headers.as_ptr(),
+                ptr::null(),
+                0.0,
+                ptr::null(),
+                ptr::null(),
+            )
+        };
+        let error = unsafe { read_field(response.error) };
+        let json = unsafe { read_field(response.json) };
+        unsafe { client_response_free(response) };
+
+        assert!(json.is_none(), "json should be null on error");
+        assert!(
+            error.is_some_and(|e| e.contains("invalid headers")),
+            "expected an invalid-headers error"
+        );
+    }
+
+    #[test]
+    fn submit_http_failure_returns_error() {
+        let url = CString::new("http://127.0.0.1:1/api/v1/submit_measurement").unwrap();
+        let content = CString::new("{}").unwrap();
+        let probe_cc = CString::new("IT").unwrap();
+        let probe_asn = CString::new("AS117").unwrap();
+
+        let response = unsafe {
+            userauth_submit(
+                url.as_ptr(),
+                content.as_ptr(),
+                probe_cc.as_ptr(),
+                probe_asn.as_ptr(),
+                ptr::null(),
+                ptr::null(),
+                0.0,
+                ptr::null(),
+                ptr::null(),
+            )
+        };
+        let error = unsafe { read_field(response.error) };
+        let json = unsafe { read_field(response.json) };
+        unsafe { client_response_free(response) };
+
+        assert!(json.is_none(), "json should be null on error");
+        assert!(
+            error.is_some_and(|e| e.starts_with("Connection error")),
+            "expected a connection error"
+        );
+    }
+
+    #[test]
+    fn get_probe_id_with_non_utf8_input_returns_error() {
+        let credential = CString::new(vec![b'f', 0xff]).unwrap();
+        let probe_asn = CString::new("AS117").unwrap();
+        let probe_cc = CString::new("IT").unwrap();
+
+        let response =
+            unsafe { get_probe_id(credential.as_ptr(), probe_asn.as_ptr(), probe_cc.as_ptr()) };
+        let error = unsafe { read_field(response.error) };
+        let json = unsafe { read_field(response.json) };
+        unsafe { client_response_free(response) };
+
+        assert!(json.is_none(), "json should be null on error");
+        assert_eq!(error.as_deref(), Some("null or invalid input"));
     }
 
     #[test]
