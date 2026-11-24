@@ -22,12 +22,10 @@ jobs:
           components: llvm-tools-preview
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
 
       - name: Run tests
-        run: cargo llvm-cov -p ooniprobe-ffi --all-targets --locked --verbose --lcov --output-path lcov.info
+        run: cargo llvm-cov -p ooniprobe-ffi --all-targets --locked --verbose --no-report
 
       - name: Coverage summary
         run: |
@@ -50,12 +48,10 @@ jobs:
           components: llvm-tools-preview
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
 
       - name: Run tests
-        run: cargo llvm-cov -p ooniprobe-services --all-targets --locked --verbose --lcov --output-path lcov.info
+        run: cargo llvm-cov -p ooniprobe-services --all-targets --locked --verbose --no-report
 
       - name: Coverage summary
         run: |
@@ -78,12 +74,10 @@ jobs:
           components: llvm-tools-preview
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
 
       - name: Run tests
-        run: cargo llvm-cov -p test-helpers --all-targets --locked --verbose --lcov --output-path lcov.info
+        run: cargo llvm-cov -p test-helpers --all-targets --locked --verbose --no-report
 
       - name: Coverage summary
         run: |
