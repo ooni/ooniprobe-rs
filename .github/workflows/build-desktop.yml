@@ -63,9 +63,33 @@ jobs:
           name: passport-linux
           path: desktop/build/libs/*.jar
 
-  publish-linux:
+  publish-desktop-github:
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-macos, build-windows]
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download JAR artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: passport-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish to GitHub release
+        run: ./script/ghpublish.bash dist/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-linux-maven:
     runs-on: ubuntu-latest
     needs: build-linux
+    if: github.ref_type == 'tag'
 
     permissions:
       contents: write
@@ -158,6 +182,7 @@ jobs:
   publish-macos:
     runs-on: ubuntu-latest
     needs: build-macos
+    if: github.ref_type == 'tag'
 
     permissions:
       contents: write
@@ -249,6 +274,7 @@ jobs:
   publish-windows:
     runs-on: ubuntu-latest
     needs: build-windows
+    if: github.ref_type == 'tag'
 
     permissions:
       contents: write
