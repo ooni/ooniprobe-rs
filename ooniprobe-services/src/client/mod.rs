@@ -151,3 +151,88 @@ impl Response {
         serde_json::to_string(self).map_err(|_| Error::Serialization)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn client_options_new_is_empty() {
+        let options = ClientOptions::new();
+        assert!(options.base_url.is_none());
+        assert!(options.timeout.is_none());
+        assert!(options.user_agent.is_none());
+        assert!(options.proxy_url.is_none());
+    }
+
+    #[test]
+    fn client_options_setters_set_and_clear() {
+        let mut options = ClientOptions::new();
+
+        options.set_base_url(Some("https://example.org/"));
+        options.set_timeout(Some(1.5));
+        options.set_user_agent(Some("agent/1.0"));
+        options.set_proxy_url(Some("socks5h://127.0.0.1:9050"));
+        assert_eq!(options.base_url.as_deref(), Some("https://example.org/"));
+        assert_eq!(options.timeout, Some(1.5));
+        assert_eq!(options.user_agent.as_deref(), Some("agent/1.0"));
+        assert_eq!(
+            options.proxy_url.as_deref(),
+            Some("socks5h://127.0.0.1:9050")
+        );
+
+        options.set_base_url(None);
+        options.set_timeout(None);
+        options.set_user_agent(None);
+        options.set_proxy_url(None);
+        assert!(options.base_url.is_none());
+        assert!(options.timeout.is_none());
+        assert!(options.user_agent.is_none());
+        assert!(options.proxy_url.is_none());
+    }
+
+    #[test]
+    fn error_kind_for_non_http_errors() {
+        assert_eq!(Error::UndetectedCharset.kind(), ErrorKind::Response);
+        assert_eq!(Error::InvalidHttpMethod.kind(), ErrorKind::Other);
+        assert_eq!(Error::Serialization.kind(), ErrorKind::Other);
+        assert_eq!(Error::Io(io::Error::other("boom")).kind(), ErrorKind::Other);
+    }
+
+    #[test]
+    fn io_error_converts_to_error_io() {
+        let err: Error = io::Error::new(io::ErrorKind::NotFound, "missing").into();
+        match err {
+            Error::Io(e) => assert_eq!(e.kind(), io::ErrorKind::NotFound),
+            other => panic!("expected Error::Io, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn b64_encode_uses_standard_alphabet() {
+        assert_eq!(b64_encode(b""), "");
+        assert_eq!(b64_encode(&[0xff, 0xfe, 0xfd]), "//79");
+    }
+
+    #[test]
+    fn response_to_json_str_round_trips() {
+        let resp = Response {
+            status_code: 201,
+            version: "HTTP/1.1".to_string(),
+            headers_list_text: vec![("content-type".to_string(), "text/plain".to_string())],
+            headers_list_b64_bytes: vec![("x-bin".to_string(), "Y2Fm6Q==".to_string())],
+            body_text: Some("created".to_string()),
+            body_b64_bytes: None,
+        };
+
+        let json = resp.to_json_str().unwrap();
+        let parsed: Response = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(parsed.status_code, 201);
+        assert_eq!(parsed.version, "HTTP/1.1");
+        assert_eq!(parsed.headers_list_text, resp.headers_list_text);
+        assert_eq!(parsed.headers_list_b64_bytes, resp.headers_list_b64_bytes);
+        assert_eq!(parsed.body_text.as_deref(), Some("created"));
+        assert!(parsed.body_b64_bytes.is_none());
+    }
+}

@@ -211,6 +211,7 @@ fn log_response(resp: &JsonResponse) {
 mod tests {
     use super::*;
     use http_body_util::{BodyExt, Empty};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     #[tokio::test]
     async fn parse_line_extracts_request_line() {
@@ -270,6 +271,71 @@ mod tests {
         let buf = b"Host: example.com\r\n";
         let result = parse_headers_list(buf);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_headers_list_rejects_non_utf8_value() {
+        let buf = b"X-Bin: caf\xe9\r\n\r\n";
+        let err = parse_headers_list(buf).unwrap_err();
+        assert!(err.contains("non-utf8 header"), "got: {err}");
+    }
+
+    #[test]
+    fn parse_headers_list_rejects_malformed_header() {
+        // A header name can't contain a space.
+        let buf = b"Bad Header: value\r\n\r\n";
+        assert!(parse_headers_list(buf).is_err());
+    }
+
+    #[test]
+    fn log_response_finds_user_agent_and_host_case_insensitively() {
+        let response = JsonResponse {
+            request_line: "GET / HTTP/1.1".to_string(),
+            headers_dict: HashMap::from([
+                ("user-agent".to_string(), vec!["ooniprobe".to_string()]),
+                ("HOST".to_string(), vec!["example.com".to_string()]),
+            ]),
+        };
+        log_response(&response);
+    }
+
+    #[tokio::test]
+    async fn non_utf8_header_returns_internal_server_error() {
+        let addr = spawn_json_listener().await;
+
+        // hyper's client won't send a non-UTF-8 header, so write the request by hand.
+        let mut stream = TcpStream::connect(addr).await.unwrap();
+        stream
+            .write_all(b"GET / HTTP/1.1\r\nHost: example.com\r\nX-Bin: caf\xe9\r\nConnection: close\r\n\r\n")
+            .await
+            .unwrap();
+
+        let mut raw = Vec::new();
+        stream.read_to_end(&mut raw).await.unwrap();
+        let raw = String::from_utf8_lossy(&raw);
+
+        assert!(
+            raw.starts_with("HTTP/1.1 500"),
+            "expected a 500 response, got: {raw}"
+        );
+        assert!(raw.contains("Couldn't parse line or headers"), "got: {raw}");
+    }
+
+    #[tokio::test]
+    async fn handler_returns_when_client_closes_without_sending() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let client = TcpStream::connect(addr).await.unwrap();
+        let (server_side, _) = listener.accept().await.unwrap();
+        drop(client);
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            handle_json_helper(server_side),
+        )
+        .await
+        .expect("handler should return once the client is gone");
     }
 
     #[tokio::test]
@@ -345,6 +411,20 @@ mod tests {
         assert_eq!(parsed["request_line"], "GET /some/path HTTP/1.1");
         assert_eq!(parsed["headers_dict"]["host"][0], "example.com");
         assert_eq!(parsed["headers_dict"]["accept"][0], "application/json");
+    }
+
+    /// Starts the json helper on an ephemeral port and returns its address,
+    /// for tests that talk to it over a raw socket.
+    async fn spawn_json_listener() -> std::net::SocketAddr {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            handle_json_helper(stream).await;
+        });
+
+        addr
     }
 
     /// Starts the json helper on an ephemeral port and returns a client

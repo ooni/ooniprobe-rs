@@ -65,6 +65,23 @@ mod tests {
         assert_eq!(received, b"first second");
     }
 
+    #[tokio::test]
+    async fn returns_when_client_closes_without_sending() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let mut client = TcpStream::connect(addr).await.unwrap();
+        let (server_side, _) = listener.accept().await.unwrap();
+        client.shutdown().await.unwrap();
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            handle_tcp_echo(server_side),
+        )
+        .await
+        .expect("handler should return once the client closes");
+    }
+
     /// Starts the echo handler on an ephemeral port and returns its address.
     async fn spawn_echo_server() -> SocketAddr {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
