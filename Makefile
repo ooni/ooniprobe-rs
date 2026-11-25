@@ -131,8 +131,14 @@ ios-xcframework: ios-universal-sim ios-bindings
 		-library target/ios-simulator-universal/release/libpassport.a -headers $(SWIFT_DIR) \
 		-output $(XCFRAMEWORK_DIR)
 
+.PHONY: ios-swift-package
+ios-swift-package: ios-xcframework
+	@rm -f ios/passport.xcframework.zip
+	cd ios && zip -qry passport.xcframework.zip passport.xcframework
+	./maven/ios/create-swift-package ios/passport.xcframework.zip ios/Package.swift
+
 .PHONY: ios
-ios: ios-xcframework
+ios: ios-swift-package
 
 .PHONY: clean-desktop
 clean-desktop:

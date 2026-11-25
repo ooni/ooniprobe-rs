@@ -26,7 +26,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: passport-ios
-          path: ios/passport.xcframework
+          path: ios/passport.xcframework.zip
 
       - name: Upload Swift Bindings
         uses: actions/upload-artifact@v6
@@ -34,9 +34,39 @@ jobs:
           name: passport-ios-swift
           path: ios/Sources/Passport/*.swift
 
-  publish-ios:
+      - name: Upload Swift Package Manifest
+        uses: actions/upload-artifact@v6
+        with:
+          name: passport-ios-package
+          path: ios/Package.swift
+
+  publish-ios-github:
     runs-on: ubuntu-latest
     needs: build-ios
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download iOS artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: passport-ios*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish to GitHub release
+        run: ./script/ghpublish.bash dist/passport.xcframework.zip dist/Package.swift dist/ooniprobe.swift
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-ios-maven:
+    runs-on: ubuntu-latest
+    needs: build-ios
+    if: github.ref_type == 'tag'
 
     permissions:
       contents: write
@@ -63,11 +93,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: passport-ios
-          path: maven/ios/passport.xcframework
-
-      - name: Zip XCFramework
-        working-directory: maven/ios
-        run: zip -r passport.xcframework.zip passport.xcframework
+          path: maven/ios
 
       - name: Set Project Version
         working-directory: maven/ios
