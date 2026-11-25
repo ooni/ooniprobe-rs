@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "ooniprobe-services",
-    "ooniprobe-ffi",
+    "ooniprobe-passport",
     "uniffi-bindgen",
     "cbindgen-gen",
     "test-helpers"

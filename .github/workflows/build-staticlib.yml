@@ -70,7 +70,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: lib-linux-${{ matrix.arch }}
+          name: passport-staticlib-linux-${{ matrix.arch }}
           path: target/lib
 
   build-macos:
@@ -99,7 +99,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: lib-macos-${{ matrix.arch }}
+          name: passport-staticlib-macos-${{ matrix.arch }}
           path: target/lib
 
   build-windows:
@@ -149,7 +149,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: lib-windows-${{ matrix.arch }}
+          name: passport-staticlib-windows-${{ matrix.arch }}
           path: target/lib
 
   bundle:
@@ -163,21 +163,21 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v7
         with:
-          pattern: lib-*
+          pattern: passport-staticlib-*-*
           merge-multiple: true
           path: target/lib
 
       - name: Create static library bundle
-        run: tar -czf target/staticlib.tar.gz -C target lib
+        run: tar -czf target/passport-staticlib.tar.gz -C target lib
 
       - name: Upload combined bundle artifact
         uses: actions/upload-artifact@v6
         with:
-          name: ooniprobe-ffi-staticlib
-          path: target/staticlib.tar.gz
+          name: passport-staticlib
+          path: target/passport-staticlib.tar.gz
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${GITHUB_REF_NAME}" target/staticlib.tar.gz --clobber
+        run: gh release upload "${GITHUB_REF_NAME}" target/passport-staticlib.tar.gz --clobber

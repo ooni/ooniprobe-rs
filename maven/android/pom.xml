@@ -39,7 +39,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <android.aar.name>ooniprobe-passport.aar</android.aar.name>
+        <android.aar.name>passport-android.aar</android.aar.name>
         <project.artifact.file>${project.basedir}/${android.aar.name}</project.artifact.file>
     </properties>
 

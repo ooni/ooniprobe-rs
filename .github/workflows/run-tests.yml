@@ -25,14 +25,14 @@ jobs:
         run: cargo install cargo-llvm-cov --locked
 
       - name: Run tests
-        run: cargo llvm-cov -p ooniprobe-ffi --all-targets --locked --verbose --no-report
+        run: cargo llvm-cov -p ooniprobe-passport --all-targets --locked --verbose --no-report
 
       - name: Coverage summary
         run: |
           {
-            echo '## ooniprobe-ffi coverage'
+            echo '## ooniprobe-passport coverage'
             echo '```'
-            cargo llvm-cov report -p ooniprobe-ffi --summary-only
+            cargo llvm-cov report -p ooniprobe-passport --summary-only
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

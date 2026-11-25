@@ -60,7 +60,7 @@ jobs:
       - name: Upload JAR Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: desktop-linux
+          name: passport-linux
           path: desktop/build/libs/*.jar
 
   publish-linux:
@@ -91,7 +91,7 @@ jobs:
       - name: Download JAR artifact
         uses: actions/download-artifact@v7
         with:
-          name: desktop-linux
+          name: passport-linux
           path: maven/desktop
 
       - name: Set Project Version
@@ -151,7 +151,7 @@ jobs:
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: desktop-macos
+          name: passport-macos
           path: desktop/build/libs/*.jar
 
 
@@ -182,7 +182,7 @@ jobs:
       - name: Download macOS Artifact
         uses: actions/download-artifact@v7
         with:
-          name: desktop-macos
+          name: passport-macos
           path: maven/desktop
 
       - name: Set Project Version
@@ -243,7 +243,7 @@ jobs:
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: desktop-windows
+          name: passport-windows
           path: desktop/build/libs/*.jar
 
   publish-windows:
@@ -273,7 +273,7 @@ jobs:
       - name: Download Windows Artifact
         uses: actions/download-artifact@v7
         with:
-          name: desktop-windows
+          name: passport-windows
           path: maven/desktop
 
       - name: Set Project Version

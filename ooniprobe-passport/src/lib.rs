@@ -11,4 +11,4 @@ pub use userauth::{
 };
 
 // Required for UniFFI scaffolding
-uniffi::include_scaffolding!("ooniprobe");
+uniffi::include_scaffolding!("passport");

@@ -5,7 +5,7 @@ mod common;
 use std::time::Duration;
 
 use common::{start_server, start_server_with_delay};
-use uniffi_ooniprobe::{
+use passport::{
     get_probe_id, protocol_version, userauth_register, userauth_submit, KeyValue, OoniError,
 };
 

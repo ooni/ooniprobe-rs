@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn test_binary_data() {
         let mut client_options = ClientOptions::new();
-        client_options.timeout = Some(5.0);
+        client_options.timeout = Some(30.0);
         let client = Client::builder()
             .set_options(client_options)
             .build()

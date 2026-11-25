@@ -1,2 +1,2 @@
-rootProject.name = "ooniprobe"
-include(":ooniprobe")
+rootProject.name = "passport-android"
+include(":passport")

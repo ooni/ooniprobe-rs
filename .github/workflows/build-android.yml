@@ -45,8 +45,8 @@ jobs:
       - name: Upload AAR Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: ooniprobe-aar
-          path: android/ooniprobe/build/outputs/aar/*.aar
+          name: passport-android
+          path: android/passport/build/outputs/aar/*.aar
 
   publish-android:
       runs-on: ubuntu-latest
@@ -76,7 +76,7 @@ jobs:
         - name: Download AAR artifact
           uses: actions/download-artifact@v7
           with:
-            name: ooniprobe-aar
+            name: passport-android
             path: maven/android
 
         - name: Set Project Version

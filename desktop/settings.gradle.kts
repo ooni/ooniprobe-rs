@@ -1,1 +1,1 @@
-rootProject.name = "ooniprobe-desktop"
+rootProject.name = "passport-desktop"
