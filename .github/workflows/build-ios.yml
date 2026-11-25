@@ -60,7 +60,7 @@ jobs:
           path: dist
 
       - name: Publish to GitHub release
-        run: ./script/ghpublish.bash dist/passport.xcframework.zip dist/Package.swift dist/ooniprobe.swift
+        run: ./scripts/ghpublish.bash dist/passport.xcframework.zip dist/Package.swift dist/ooniprobe.swift
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

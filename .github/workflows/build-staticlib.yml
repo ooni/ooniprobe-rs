@@ -177,6 +177,6 @@ jobs:
           path: target/passport-staticlib.tar.gz
 
       - name: Publish to GitHub release
-        run: ./script/ghpublish.bash target/passport-staticlib.tar.gz
+        run: ./scripts/ghpublish.bash target/passport-staticlib.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

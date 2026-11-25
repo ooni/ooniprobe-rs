@@ -82,7 +82,7 @@ jobs:
           path: dist
 
       - name: Publish to GitHub release
-        run: ./script/ghpublish.bash dist/*.jar
+        run: ./scripts/ghpublish.bash dist/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
