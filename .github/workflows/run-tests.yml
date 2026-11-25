@@ -30,9 +30,9 @@ jobs:
       - name: Coverage summary
         run: |
           {
-            echo '## ooniprobe-ffi coverage'
+            echo '## ooniprobe-passport coverage'
             echo '```'
-            cargo llvm-cov report -p ooniprobe-ffi --summary-only
+            cargo llvm-cov report -p ooniprobe-passport --summary-only
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
