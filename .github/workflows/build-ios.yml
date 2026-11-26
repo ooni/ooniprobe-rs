@@ -26,19 +26,19 @@ jobs:
       - name: Upload XCFramework Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: passport-ios
+          name: passport.xcframework.zip
           path: ios/passport.xcframework.zip
 
       - name: Upload Swift Bindings
         uses: actions/upload-artifact@v6
         with:
-          name: passport-ios-swift
-          path: ios/Sources/Passport/*.swift
+          name: ooniprobe.swift
+          path: ios/Sources/Passport/ooniprobe.swift
 
       - name: Upload Swift Package Manifest
         uses: actions/upload-artifact@v6
         with:
-          name: passport-ios-package
+          name: Package.swift
           path: ios/Package.swift
 
   publish-ios-github:
@@ -52,11 +52,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Download iOS artifacts
+      - name: Download XCFramework
         uses: actions/download-artifact@v7
         with:
-          pattern: passport-ios*
-          merge-multiple: true
+          name: passport.xcframework.zip
+          path: dist
+
+      - name: Download Swift Bindings
+        uses: actions/download-artifact@v7
+        with:
+          name: ooniprobe.swift
+          path: dist
+
+      - name: Download Swift Package Manifest
+        uses: actions/download-artifact@v7
+        with:
+          name: Package.swift
           path: dist
 
       - name: Publish to GitHub release
@@ -93,7 +104,7 @@ jobs:
       - name: Download XCFramework
         uses: actions/download-artifact@v7
         with:
-          name: passport-ios
+          name: passport.xcframework.zip
           path: maven/ios
 
       - name: Set Project Version
